@@ -30,12 +30,57 @@ function mt.__index:load(path)
 	return ret
 end
 
+function mt.__index:main()
+	while true do
+		if not self.skip_print then
+			lib.hook(self.hooks.print_pre, self)
+			local lines = {}
+			for i = #self.curr.prev + 1, #self.curr.prev + #self.curr.curr do lines[i] = true end
+			self.curr:print(lines)
+			lib.hook(self.hooks.print_post, self)
+
+			print()
+			local w = #tostring(#self.files)
+			for i, f in ipairs(self.files) do
+				print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[34m%d\x1b[0m lines%s"):format(
+					i == self.curr.id and "[" or " ",
+					i,
+					i == self.curr.id and "]" or " ",
+					f.path,
+					f.mode,
+					#f.prev + #f.curr + #f.next,
+					f.modified and ", \x1b[35mmodified\x1b[0m" or ""
+				))
+			end
+		end
+		self.skip_print = nil
+
+		if self.msg then
+			print("\x1b[31m" .. self.msg .. "\x1b[0m")
+			self.msg = nil
+		end
+
+		local ok, cmd = pcall(lib.readline, "> ")
+
+		if not ok then
+			self.msg = "failed to read input: " .. cmd
+		elseif not cmd then self:quit()
+		elseif cmd == "" then ;
+		else
+			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
+			if not ok then
+				self.msg = "command failed: " .. status
+			end
+		end
+	end
+end
+
 function mt.__index:quit()
 	for _, v in ipairs(self.files) do v:close() end
 	os.exit(0)
 end
 
-return function()
+return function(files)
 	local ret = setmetatable({}, mt)
 
 	ret.cmds = {
@@ -52,6 +97,8 @@ return function()
 	ret.hooks = {
 		close      = {},
 		load       = {},
+		print_pre  = {},
+		print_post = {},
 		save_pre   = {},
 		save_post  = {},
 		undo_point = {},
@@ -62,6 +109,38 @@ return function()
 		highlight = function(lines) return lines end,
 		post      = {},
 	}
+
+	local confdir = os.getenv("XDG_CONFIG_HOME")
+	if not confdir and os.getenv("SUDO_USER") then
+		local l = io.popen("getent passwd " .. ned.shellesc(os.getenv("SUDO_USER"))):read("l")
+		confdir = l:match("^[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:([^:]*):") .. "/.config"
+	end
+	if not confdir then
+		confdir = os.getenv("HOME") .. "/.config"
+	end
+	ret.config_file = confdir .. "/ned/config.lua"
+
+	local f, err = loadfile(ret.config_file)
+	if not f then
+		print("error loading config file: " .. err)
+		lib.prompt("")
+	else
+		local ok, err = xpcall(f, debug.traceback, ret)
+		if not ok then
+			print("error running config file: " .. err)
+			lib.prompt("")
+		end
+	end
+
+	if files then
+		for _, v in ipairs(files) do
+			    if type(v) == "string" then ret:load(v     )
+			elseif type(v) == "table"  then ret:load(v.name)
+			end
+		end
+	else
+		ret:load()
+	end
 
 	return ret
 end

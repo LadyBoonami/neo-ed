@@ -27,9 +27,6 @@ function mt.__index:close(force)
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
-	self.state.curr = self.state.files[self.state.curr.id] or self.state.files[self.state.curr.id - 1]
-	if not ned.curr then os.exit(0) end
-	for i, v in ipairs(ned.files) do v.id = i end
 end
 
 function mt.__index:extract(a, b)
@@ -139,10 +136,7 @@ return function(state, path)
 	ret.history  = {}
 	ret.modified = false
 
-	table.insert(ned.files, ret)
-	ret.id = #ned.files
-
-	lib.hook(self.state.hooks.load, ret)
+	lib.hook(ret.state.hooks.load, ret)
 
 	return ret
 end

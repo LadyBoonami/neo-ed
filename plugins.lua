@@ -1,6 +1,6 @@
 local m = {}
 
-function m.base_addr_line(state)
+function m.core_addr_line(state)
 	table.insert(state.cmds.fst, {"^(%d+)(.*)$", function(ctx, a, s)
 		ctx.a = tonumber(a)
 		return state:cmd(s, ctx)
@@ -17,7 +17,7 @@ function m.base_addr_line(state)
 	end, "end after number of lines"})
 end
 
-function m.base_addr_pat(state)
+function m.core_addr_pat(state)
 	table.insert(state.cmds.fst, {"^(%p)(.-)%1(.*)$", function(ctx, sep, a, s)
 		local tmp = state.curr:all()
 		for i, l in ipairs(tmp) do
@@ -59,7 +59,7 @@ function m.base_addr_pat(state)
 	end, "end after first match of pattern afterwards"})
 end
 
-function m.base_editing(state)
+function m.core_editing(state)
 	table.insert(state.cmds.main, {"^a$", function(ctx)
 		state.curr:undo_point()
 		local a = state.curr:addr(ctx.a, "last")
@@ -114,25 +114,66 @@ function m.base_editing(state)
 		end
 		state.curr:insert(a - 1, new)
 	end, "split lines (selection) on character"})
+
+	table.insert(state.cmds.main, {"^s(.)(.-)%1(.-)%1(.-)$", function(ctx, _, pa, pb, flags)
+		state.curr:undo_point()
+		local a = state.curr:addr(ctx.a, "first")
+		local b = state.curr:addr(ctx.b or ctx.a, "last")
+		for i, l in ipairs(state.curr.curr) do
+			if a <= i and i <= b then
+				if flags:find("g") then
+					state.curr.curr[i] = l:gsub(pa, pb)
+				else
+					state.curr.curr[i] = l:gsub(pa, pb, 1)
+				end
+			end
+		end
+	end, "substitute text in the current selection using Lua gsub (entire selection)"})
 end
 
---function m.help(state)
---	table.insert(state.cmds.main, {"^h$", function(ctx)
---		print("Line / Range Start prefix:")
---		for i, v in ipairs(ned.cmds.line) do
---			print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub("%(%.%*%)%$$", ""), v[3]))
---		end
---
---		print("\nRange end prefix:")
---		for i, v in ipairs(ned.cmds.range) do
---			print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub("%(%.%*%)%$$", ""), v[3]))
---		end
---
---		print("\nCommands:")
---		for i, v in ipairs(ned.cmds.main) do
---			print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub("%$$", ""), v[3]))
---		end
---
---		ned.skip_print = true
---	end, "show help"})
---end
+function m.core_help(state)
+	table.insert(state.cmds.main, {"^h$", function(ctx)
+		local function f(t)
+			for i, v in ipairs(t) do print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub("%(%.%*%)%$$", ""), v[3])) end
+		end
+
+		print("Line / Range start prefix:")
+		f(state.cmds.fst)
+		f(state.cmds.fst_post)
+
+		print("\nRange end prefix:")
+		f(state.cmds.snd)
+		f(state.cmds.snd_post)
+
+		print("\nCommands:")
+		f(state.cmds.main)
+		f(state.cmds.main_post)
+
+		state.skip_print = true
+	end, "show help"})
+end
+
+function m.core_state(state)
+	table.insert(state.cmds.main, {"^e +(.+)$", function(ctx, s) state     :load (s)    end, "open file"       })
+	table.insert(state.cmds.main, {"^q$"      , function(ctx   ) state.curr:close(    ) end,       "close file"})
+	table.insert(state.cmds.main, {"^Q$"      , function(ctx   ) state.curr:close(true) end, "force close file"})
+	table.insert(state.cmds.main, {"^qq$"     , function(ctx   ) state     :quit (    ) end,       "quit"      })
+	table.insert(state.cmds.main, {"^qq$"     , function(ctx   ) state     :quit (true) end, "force quit"      })
+
+	table.insert(state.cmds.main, {"^u$"      , function(ctx   ) state.curr:undo( )                     end, "undo"                                         })
+	table.insert(state.cmds.main, {"^w$"      , function(ctx   ) state.curr:save( )                     end, "write changes to the current file"            })
+	table.insert(state.cmds.main, {"^w +(.+)$", function(ctx, s) state.curr:save(s)                     end, "write changes to the specified file"          })
+	table.insert(state.cmds.main, {"^wq$"     , function(ctx   ) state.curr:save( ); state.curr:close() end, "write changes to the current file, then close"})
+
+	table.insert(state.cmds.main, {"^#(%d+)$" , function(ctx, s) state.curr = assert(state.files[tonumber(s)], "no such file") end, "switch to open file"})
+end
+
+function m.core(state)
+	m.core_addr_line(state)
+	m.core_addr_pat (state)
+	m.core_editing  (state)
+	m.core_help     (state)
+	m.core_state    (state)
+end
+
+return m

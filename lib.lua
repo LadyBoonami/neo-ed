@@ -87,3 +87,4 @@ function m.shellesc(s)
 	return "'" .. s:gsub("'", "'\\''") .. "'"
 end
 
+return m
