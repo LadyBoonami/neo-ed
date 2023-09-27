@@ -112,7 +112,7 @@ return function(files)
 
 	local confdir = os.getenv("XDG_CONFIG_HOME")
 	if not confdir and os.getenv("SUDO_USER") then
-		local l = io.popen("getent passwd " .. ned.shellesc(os.getenv("SUDO_USER"))):read("l")
+		local l = io.popen("getent passwd " .. lib.shellesc(os.getenv("SUDO_USER"))):read("l")
 		confdir = l:match("^[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:([^:]*):") .. "/.config"
 	end
 	if not confdir then
@@ -123,12 +123,12 @@ return function(files)
 	local f, err = loadfile(ret.config_file)
 	if not f then
 		print("error loading config file: " .. err)
-		lib.prompt("")
+		lib.readline("")
 	else
 		local ok, err = xpcall(f, debug.traceback, ret)
 		if not ok then
 			print("error running config file: " .. err)
-			lib.prompt("")
+			lib.readline("")
 		end
 	end
 
