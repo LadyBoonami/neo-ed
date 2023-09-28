@@ -279,15 +279,18 @@ end
 function m.pygmentize_filter(state)
 	state.print.highlight = function(lines, curr)
 		if curr.mode then
-			table.insert(lines, "")
-			local pre, main, suf = table.concat(lines, "\n"):match("^(%s*)(.-\n)(%s*)$")
-			assert(pre)
-			local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.mode), main), suf}
-			local ret = {}
-			for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
-			table.remove(ret)
-			return ret
+			local pre, main, suf = (table.concat(lines, "\n") .. "\n"):match("^(%s*)(.-\n)(%s*)$")
+			if pre then
+				local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.mode), main), suf}
+				local ret = {}
+				for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
+				table.remove(ret)
+				print(ret)
+				return ret
+			end
+			return lines
 		end
+		return lines
 	end
 
 	table.insert(state.cmds.main, {"^:mode +(.+)$", function(ctx, s) state.curr.mode = s end, "set file type"})
@@ -299,7 +302,7 @@ function m.pygmentize_mode_detect(state)
 	end
 
 	table.insert(state.hooks.load, function(curr)
-		if not curr.mode then
+		if curr.path and not curr.mode then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
 			curr.mode = h:read("l")
 		end

@@ -54,9 +54,25 @@ end
 
 function mt.__index:print(lines)
 	local all = self:all()
-	for _, f in ipairs(self.state.print.pre ) do all = f(all, self) end
-	all = self.state.print.highlight(all, self)
-	for _, f in ipairs(self.state.print.post) do all = f(all, self) end
+
+	local function go(f)
+		local ok, r = xpcall(f, debug.traceback, all, self)
+		if ok then
+			if not r then
+				local info = debug.getinfo(f, "S")
+				print("print function failed to produce output: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
+			else
+				all = r
+			end
+		else
+			local info = debug.getinfo(f, "S")
+			print("print function failed: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ": " .. r)
+		end
+	end
+
+	for _, f in ipairs(self.state.print.pre ) do go(f) end
+	go(self.state.print.highlight)
+	for _, f in ipairs(self.state.print.post) do go(f) end
 
 	local w = #tostring(#all)
 	for i, l in ipairs(all) do

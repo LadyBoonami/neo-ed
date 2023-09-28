@@ -64,7 +64,8 @@ function m.pipe(cmd, stdin)
 		end
 
 		pu.close(c2p_r)
-		posix.sys.wait.wait(p)
+		local _, status, id = posix.sys.wait.wait(p)
+		if status ~= "exited" or id ~= 0 then error("command " .. status .. " " .. tostring(id)) end
 
 		return table.concat(ret)
 
