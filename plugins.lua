@@ -294,7 +294,7 @@ end
 
 function m.pygmentize_mode_detect(state)
 	local function guess(curr)
-		curr.mode = lib.pipe("pygmentize -C")(table.concat(curr:all(), "\n")):match("^[^\n]*")
+		curr.mode = lib.pipe("pygmentize -C", table.concat(curr:all(), "\n")):match("^[^\n]*")
 	end
 
 	table.insert(state.hooks.load, function(curr)
