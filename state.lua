@@ -1,4 +1,4 @@
-local lib = require "ned.lib"
+local lib = require "neo-ed.lib"
 
 local mt = {
 	__index = {},
@@ -23,7 +23,7 @@ function mt.__index:cmd(s, ctx)
 end
 
 function mt.__index:load(path)
-	local ret = require "ned.buffer" (self, path)
+	local ret = require "neo-ed.buffer" (self, path)
 	table.insert(self.files, ret)
 	ret.id = #self.files
 	self.curr = ret

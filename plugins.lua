@@ -1,6 +1,6 @@
 local m = {}
 
-local lib = require "ned.lib"
+local lib = require "neo-ed.lib"
 
 function m.core_addr_line(state)
 	table.insert(state.cmds.fst, {"^(%d+)(.*)$", function(ctx, a, s)
@@ -347,6 +347,20 @@ function m.tabs_filter(state)
 		end
 		return lines
 	end)
+end
+
+function m.all(state)
+	m.core                  (state)
+	m.align                 (state)
+	m.clipboard             (state)
+	m.config_file           (state)
+	m.eol_filter            (state)
+	m.find                  (state)
+	m.lua_cmd               (state)
+	m.pygmentize_filter     (state)
+	m.pygmentize_mode_detect(state)
+	m.shell                 (state)
+	m.tabs_filter           (state)
 end
 
 --[[

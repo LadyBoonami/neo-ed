@@ -1,4 +1,4 @@
-local lib = require "ned.lib"
+local lib = require "neo-ed.lib"
 
 local mt = {
 	__index = {},
