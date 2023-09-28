@@ -166,6 +166,7 @@ function m.core_state(state)
 	table.insert(state.cmds.main, {"^w$"      , function(ctx   ) state.curr:save( )                     end, "write changes to the current file"            })
 	table.insert(state.cmds.main, {"^w +(.+)$", function(ctx, s) state.curr:save(s)                     end, "write changes to the specified file"          })
 	table.insert(state.cmds.main, {"^wq$"     , function(ctx   ) state.curr:save( ); state.curr:close() end, "write changes to the current file, then close"})
+	table.insert(state.cmds.main, {"^wqq$"    , function(ctx   ) state.curr:save( ); state:quit      () end, "write changes to the current file, then quit" })
 
 	table.insert(state.cmds.main, {"^#(%d+)$" , function(ctx, s) state.curr = assert(state.files[tonumber(s)], "no such file") end, "switch to open file"})
 end
@@ -361,7 +362,7 @@ function m.tabs_filter(state)
 	end)
 end
 
-function m.all(state)
+function m.def(state)
 	m.core                  (state)
 	m.align                 (state)
 	m.clipboard             (state)
