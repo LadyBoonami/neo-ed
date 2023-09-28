@@ -271,6 +271,7 @@ end
 function m.lua_cmd(state)
 	table.insert(state.cmds.main, {"^:lua *(.*)$", function(ctx, s)
 		assert(load(s, "interactive", "t"))()
+		state.skip_print = true
 	end, "execute lua command"})
 end
 
@@ -309,7 +310,8 @@ end
 
 function m.shell(state)
 	table.insert(state.cmds.main, {"^!(.+)$", function(ctx, s)
-		os.execute(s)
+		local ok, how, no = os.execute(s)
+		if not ok then print(how, no) end
 		state.skip_print = true
 	end, "execute shell command"})
 
