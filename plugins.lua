@@ -308,6 +308,18 @@ function m.pygmentize_mode_detect(state)
 	table.insert(state.cmds.main, {"^:guess$", function(ctx) guess(state.curr) end, "guess file type from content"})
 end
 
+function m.reload(state)
+	table.insert(state.cmds.main, {"^:reload$", function(ctx)
+		local files = {}
+		for _, v in ipairs(state.files) do
+			if v.modified then error("buffer modified: " .. v.path) end
+			table.insert(files, {path = v.path, cmd = tostring(#v.prev + 1) .. "," .. tostring(#v.prev + #v.curr) .. "f"})
+		end
+		for _, v in ipairs(state.files) do v:close() end
+		return require("neo-ed.state")(files):main()
+	end, "reload editor config"})
+end
+
 function m.shell(state)
 	table.insert(state.cmds.main, {"^!(.+)$", function(ctx, s)
 		local ok, how, no = os.execute(s)
@@ -359,6 +371,7 @@ function m.all(state)
 	m.lua_cmd               (state)
 	m.pygmentize_filter     (state)
 	m.pygmentize_mode_detect(state)
+	m.reload                (state)
 	m.shell                 (state)
 	m.tabs_filter           (state)
 end

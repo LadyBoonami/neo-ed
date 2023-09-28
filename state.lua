@@ -135,7 +135,7 @@ return function(files)
 	if files then
 		for _, v in ipairs(files) do
 			    if type(v) == "string" then ret:load(v     )
-			elseif type(v) == "table"  then ret:load(v.name)
+			elseif type(v) == "table"  then ret:load(v.path); ret:cmd(v.cmd)
 			end
 		end
 	else

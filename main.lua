@@ -10,5 +10,4 @@ state(arg):main()
 	- replace tabs with spaces
 	- proper tab handling?
 	- readline replacement?
-	- reload config?
 ]]
