@@ -60,13 +60,14 @@ function mt.__index:main()
 			self.msg = nil
 		end
 
-		local ok, cmd = pcall(lib.readline, "> ")
+		local ok, cmd = pcall(lib.readline, "> ", self.history)
 
 		if not ok then
 			self.msg = "failed to read input: " .. cmd
 		elseif not cmd then self:quit()
 		elseif cmd == "" then ;
 		else
+			table.insert(self.history, cmd)
 			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
 			if not ok then
 				self.msg = "command failed: " .. status
@@ -109,6 +110,8 @@ return function(files)
 		highlight = function(lines) return lines end,
 		post      = {},
 	}
+
+	ret.history = {}
 
 	local confdir = os.getenv("XDG_CONFIG_HOME")
 	if not confdir and os.getenv("SUDO_USER") then
