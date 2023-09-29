@@ -91,7 +91,11 @@ function mt.__index:save(path)
 	lib.hook(self.state.hooks.save_pre, self)
 
 	local h = io.open(self.path, "w")
-	for _, l in ipairs(self:all()) do h:write(l, "\n") end
+	local all = self:all()
+	for _, l in ipairs(all) do
+		h:write(self.conf.trim and l:match("^(.-)%s*$") or l)
+		if i ~= #all or self.conf.end_nl then h:write(self.conf.crlf and "\r\n" or "\n") end
+	end
 	h:close()
 
 	self.modified = false
@@ -151,6 +155,15 @@ return function(state, path)
 
 	ret.history  = {}
 	ret.modified = false
+
+	ret.conf = {
+		crlf    = false,
+		end_nl  = true ,
+		indent  = 4    ,
+		tab2spc = false,
+		tabs    = 4    ,
+		trim    = false,
+	}
 
 	lib.hook(ret.state.hooks.load, ret)
 

@@ -250,6 +250,23 @@ function m.config_file(state)
 	table.insert(state.cmds.main, {"^:config$", function(ctx, s) state:load(state.config_file) end, "open config file"})
 end
 
+function m.editorconfig(state)
+	table.insert(state.hooks.load, function(b)
+		local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
+		local conf = {}
+		for l in h:lines() do
+			local k, v = l:match("^([^=]+)=(.*)$")
+			if k then conf[k] = v end
+		end
+
+		if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
+		if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
+		if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
+		if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+		if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
+	end)
+end
+
 function m.eol_filter(state)
 	table.insert(state.print.post, function(lines)
 		for i, l in ipairs(lines) do lines[i] = l .. "\x1b[34m·\x1b[0m" end
@@ -264,7 +281,7 @@ function m.find(state)
 		for i, v in ipairs(tmp) do
 			if v:find(pat) then lines[i] = true end
 		end
-		state.print(lines)
+		state.curr:print(lines)
 		state.skip_print = true
 	end, "search for pattern in entire file"})
 end
@@ -285,7 +302,6 @@ function m.pygmentize_filter(state)
 				local ret = {}
 				for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
 				table.remove(ret)
-				print(ret)
 				return ret
 			end
 			return lines
@@ -349,15 +365,17 @@ function m.shell(state)
 end
 
 function m.tabs_filter(state)
-	table.insert(state.hooks.load, function(b) b.tab_width = 4 end)
-
-	table.insert(state.cmds.main, {"^:tab_width +(%d+)$", function(ctx, s)
-		state.curr.tab_width = tonumber(s)
+	table.insert(state.cmds.main, {"^:tabs +(%d+)$", function(ctx, s)
+		state.curr.conf.tabs = tonumber(s)
 	end, "set tab width"})
+
+	table.insert(state.cmds.main, {"^:indent +(%d+)$", function(ctx, s)
+		state.curr.conf.indent = tonumber(s)
+	end, "set indentation"})
 
 	table.insert(state.print.post, function(lines, b)
 		for i, l in ipairs(lines) do
-			local spc = (" "):rep(b.tab_width - 1)
+			local spc = (" "):rep(b.conf.tabs - 1)
 			lines[i] = l
 				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
 				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
@@ -377,6 +395,7 @@ function m.def(state)
 	m.align                 (state)
 	m.clipboard             (state)
 	m.config_file           (state)
+	m.editorconfig          (state)
 	m.eol_filter            (state)
 	m.find                  (state)
 	m.lua_cmd               (state)
@@ -392,7 +411,6 @@ end
 	- language-specific
 	- trim
 	- autosave
-	- editorconfig?
 ]]
 
 return m
