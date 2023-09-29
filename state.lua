@@ -1,4 +1,5 @@
-local lib = require "neo-ed.lib"
+local posix = require "posix"
+local lib   = require "neo-ed.lib"
 
 local mt = {
 	__index = {},
@@ -123,15 +124,37 @@ return function(files)
 	end
 	ret.config_file = confdir .. "/ned/config.lua"
 
-	local f, err = loadfile(ret.config_file)
-	if not f then
-		print("error loading config file: " .. err)
-		lib.readline("")
-	else
-		local ok, err = xpcall(f, debug.traceback, ret)
-		if not ok then
-			print("error running config file: " .. err)
-			lib.readline("")
+	local ok, _, errno = posix.unistd.access(ret.config_file, "r")
+	if not ok and errno == posix.errno.ENOENT then
+		while true do
+			local r = lib.readline("No configuration file found. Create a default? (y/n) ")
+			if r == "n" then
+				require("neo-ed.plugins").core(ret)
+				break
+			else
+				assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/ned"), "cannot create config dir"))
+				local h <close> = io.open(ret.config_file, "w")
+				h:write((require("neo-ed.default_config")))
+				print("Default configuration file has been created at " .. ret.config_file)
+				print("Use command :config to edit it anytime, then :reload to apply changes.")
+				lib.readline("Press Enter to continue ... ")
+				ok = true
+				break
+			end
+		end
+	end
+
+	if ok then
+		local f, err = loadfile(ret.config_file)
+		if not f then
+			print("error loading config file: " .. err)
+			lib.readline("Press Enter to continue ... ")
+		else
+			local ok, err = xpcall(f, debug.traceback, ret)
+			if not ok then
+				print("error running config file: " .. err)
+				lib.readline("Press Enter to continue ... ")
+			end
 		end
 	end
 

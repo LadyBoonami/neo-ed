@@ -250,25 +250,6 @@ function m.config_file(state)
 	table.insert(state.cmds.main, {"^:config$", function(ctx, s) state:load(state.config_file) end, "open config file"})
 end
 
-function m.editorconfig(state)
-	table.insert(state.hooks.load, function(b)
-		if b.path then
-			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
-			local conf = {}
-			for l in h:lines() do
-				local k, v = l:match("^([^=]+)=(.*)$")
-				if k then conf[k] = v end
-			end
-
-			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
-			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
-			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
-			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
-			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
-		end
-	end)
-end
-
 function m.eol_filter(state)
 	table.insert(state.print.post, function(lines)
 		for i, l in ipairs(lines) do lines[i] = l .. "\x1b[34m·\x1b[0m" end
@@ -293,41 +274,6 @@ function m.lua_cmd(state)
 		assert(load(s, "interactive", "t"))()
 		state.skip_print = true
 	end, "execute lua command"})
-end
-
-function m.pygmentize_filter(state)
-	state.print.highlight = function(lines, curr)
-		if curr.mode then
-			local pre, main, suf = (table.concat(lines, "\n") .. "\n"):match("^(%s*)(.-\n)(%s*)$")
-			if pre then
-				local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.mode), main), suf}
-				local ret = {}
-				for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
-				table.remove(ret)
-				return ret
-			end
-			return lines
-		end
-		return lines
-	end
-
-	table.insert(state.cmds.main, {"^:mode +(.+)$", function(ctx, s) state.curr.mode = s end, "set file type"})
-end
-
-function m.pygmentize_mode_detect(state)
-	local function guess(curr)
-		curr.mode = lib.pipe("pygmentize -C", table.concat(curr:all(), "\n")):match("^[^\n]*")
-	end
-
-	table.insert(state.hooks.load, function(curr)
-		if curr.path and not curr.mode then
-			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
-			curr.mode = h:read("l")
-		end
-		if #curr.curr > 100 and (not curr.mode or curr.mode == "text") then guess(curr) end
-	end)
-
-	table.insert(state.cmds.main, {"^:guess$", function(ctx) guess(state.curr) end, "guess file type from content"})
 end
 
 function m.reload(state)
@@ -379,6 +325,13 @@ function m.tabs_filter(state)
 		for i, l in ipairs(lines) do
 			local spc = (" "):rep(b.conf.tabs - 1)
 			lines[i] = l
+				:gsub("^(\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
+				:gsub("^(\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
+				:gsub("^(\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m" .. spc)
+				:gsub("^(\t\t\t)\t", "%1\x1b[36m│\x1b[0m" .. spc)
+				:gsub("^(\t\t)\t", "%1\x1b[32m│\x1b[0m" .. spc)
+				:gsub("^(\t)\t", "%1\x1b[33m│\x1b[0m" .. spc)
+				:gsub("^\t", "%1\x1b[31m│\x1b[0m" .. spc)
 				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
 				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
 				:gsub("^(\x1b[^m]-m\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m" .. spc)
@@ -393,19 +346,70 @@ function m.tabs_filter(state)
 end
 
 function m.def(state)
-	m.core                  (state)
-	m.align                 (state)
-	m.clipboard             (state)
-	m.config_file           (state)
-	m.editorconfig          (state)
-	m.eol_filter            (state)
-	m.find                  (state)
-	m.lua_cmd               (state)
-	m.pygmentize_filter     (state)
-	m.pygmentize_mode_detect(state)
-	m.reload                (state)
-	m.shell                 (state)
-	m.tabs_filter           (state)
+	m.core       (state)
+	m.align      (state)
+	m.clipboard  (state)
+	m.config_file(state)
+	m.eol_filter (state)
+	m.find       (state)
+	m.lua_cmd    (state)
+	m.reload     (state)
+	m.shell      (state)
+	m.tabs_filter(state)
+end
+
+function m.editorconfig(state)
+	table.insert(state.hooks.load, function(b)
+		if b.path then
+			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
+			local conf = {}
+			for l in h:lines() do
+				local k, v = l:match("^([^=]+)=(.*)$")
+				if k then conf[k] = v end
+			end
+
+			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
+			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
+			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
+			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
+		end
+	end)
+end
+
+function m.pygmentize_filter(state)
+	state.print.highlight = function(lines, curr)
+		if curr.mode then
+			local pre, main, suf = (table.concat(lines, "\n") .. "\n"):match("^(%s*)(.-\n)(%s*)$")
+			if pre then
+				local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.mode), main), suf}
+				local ret = {}
+				for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
+				table.remove(ret)
+				return ret
+			end
+			return lines
+		end
+		return lines
+	end
+
+	table.insert(state.cmds.main, {"^:mode +(.+)$", function(ctx, s) state.curr.mode = s end, "set file type"})
+end
+
+function m.pygmentize_mode_detect(state)
+	local function guess(curr)
+		curr.mode = lib.pipe("pygmentize -C", table.concat(curr:all(), "\n")):match("^[^\n]*")
+	end
+
+	table.insert(state.hooks.load, function(curr)
+		if curr.path and not curr.mode then
+			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
+			curr.mode = h:read("l")
+		end
+		if #curr.curr > 100 and (not curr.mode or curr.mode == "text") then guess(curr) end
+	end)
+
+	table.insert(state.cmds.main, {"^:guess$", function(ctx) guess(state.curr) end, "guess file type from content"})
 end
 
 --[[
