@@ -252,18 +252,20 @@ end
 
 function m.editorconfig(state)
 	table.insert(state.hooks.load, function(b)
-		local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
-		local conf = {}
-		for l in h:lines() do
-			local k, v = l:match("^([^=]+)=(.*)$")
-			if k then conf[k] = v end
-		end
+		if b.path then
+			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
+			local conf = {}
+			for l in h:lines() do
+				local k, v = l:match("^([^=]+)=(.*)$")
+				if k then conf[k] = v end
+			end
 
-		if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
-		if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
-		if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
-		if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
-		if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
+			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
+			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
+			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
+			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
+		end
 	end)
 end
 

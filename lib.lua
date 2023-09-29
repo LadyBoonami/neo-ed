@@ -24,8 +24,9 @@ function m.hook(h, ...)
 
 	for _, f in ipairs(h) do
 		local before = posix.sys.time.gettimeofday()
-		f(...)
+		local ok, msg = xpcall(f, debug.traceback, ...)
 		local after = posix.sys.time.gettimeofday()
+		if not ok then print("hook failed: " .. msg) end
 
 		if m.trace then
 			local info = debug.getinfo(f, "S")
