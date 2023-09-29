@@ -2,6 +2,8 @@ local m = {}
 
 local posix = require "posix"
 
+m.trace = false
+
 local rl = require "readline"
 rl.set_readline_name("ned")
 rl.set_options{
@@ -15,7 +17,22 @@ rl.set_complete_function(function(text, from, to)
 end)
 
 function m.hook(h, ...)
-	for _, f in ipairs(h) do f(...) end
+	if m.trace then
+		local info = debug.getinfo(2, "S")
+		print("Hook " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
+	end
+
+	for _, f in ipairs(h) do
+		local before = posix.sys.time.gettimeofday()
+		f(...)
+		local after = posix.sys.time.gettimeofday()
+
+		if m.trace then
+			local info = debug.getinfo(f, "S")
+			local delta = (after.tv_sec + after.tv_usec / 1000000) - (before.tv_sec + before.tv_usec / 1000000)
+			print("    " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ":" .. delta)
+		end
+	end
 end
 
 function m.match(s, tbl, ...)
