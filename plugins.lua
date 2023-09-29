@@ -80,7 +80,7 @@ function m.core_editing(state)
 		for i, l in ipairs(state.curr.curr) do
 			if a <= i and i <= b then
 				local pre = l:match("^(%s*)")
-				state.curr.curr[i] = lib.readline("", {l, pre})
+				state.curr.curr[i] = lib.readline("", {pre, l})
 			end
 		end
 	end, "change each line (in selection)"})

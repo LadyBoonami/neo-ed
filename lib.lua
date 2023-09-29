@@ -73,7 +73,7 @@ function m.pipe(cmd, stdin)
 end
 
 function m.readline(prompt, ac)
-	if ac then for i = #ac, 1, -1 do rl.add_history(ac[i]) end end
+	if ac then for _, v in ipairs(ac) do rl.add_history(v) end end
 	local r = rl.readline(prompt)
 	if r == "" then print("") end
 	return r
