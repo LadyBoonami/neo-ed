@@ -349,17 +349,24 @@ function m.shell(state)
 end
 
 function m.tabs_filter(state)
-	table.insert(state.print.post, function(lines)
+	table.insert(state.hooks.load, function(b) b.tab_width = 4 end)
+
+	table.insert(state.cmds.main, {"^:tab_width +(%d+)$", function(ctx, s)
+		state.curr.tab_width = tonumber(s)
+	end, "set tab width"})
+
+	table.insert(state.print.post, function(lines, b)
 		for i, l in ipairs(lines) do
+			local spc = (" "):rep(b.tab_width - 1)
 			lines[i] = l
-				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m   ") end)
-				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m   ")
-				:gsub("^(\x1b[^m]-m\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m   ")
-				:gsub("^(\x1b[^m]-m\t\t\t)\t", "%1\x1b[36m│\x1b[0m   ")
-				:gsub("^(\x1b[^m]-m\t\t)\t", "%1\x1b[32m│\x1b[0m   ")
-				:gsub("^(\x1b[^m]-m\t)\t", "%1\x1b[33m│\x1b[0m   ")
-				:gsub("^(\x1b[^m]-m)\t", "%1\x1b[31m│\x1b[0m   ")
-				:gsub("\t", "\x1b[34m├──🭬\x1b[0m")
+				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
+				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t\t)\t", "%1\x1b[36m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t)\t", "%1\x1b[32m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t)\t", "%1\x1b[33m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m)\t", "%1\x1b[31m│\x1b[0m" .. spc)
+				:gsub("\t", "\x1b[34m│\x1b[0m" .. spc)
 		end
 		return lines
 	end)
