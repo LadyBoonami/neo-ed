@@ -122,7 +122,7 @@ return function(files)
 	if not confdir then
 		confdir = os.getenv("HOME") .. "/.config"
 	end
-	ret.config_file = confdir .. "/ned/config.lua"
+	ret.config_file = confdir .. "/neo-ed/config.lua"
 
 	local ok, _, errno = posix.unistd.access(ret.config_file, "r")
 	if not ok and errno == posix.errno.ENOENT then
@@ -132,7 +132,7 @@ return function(files)
 				require("neo-ed.plugins").core(ret)
 				break
 			else
-				assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/ned"), "cannot create config dir"))
+				assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/neo-ed"), "cannot create config dir"))
 				local h <close> = io.open(ret.config_file, "w")
 				h:write((require("neo-ed.default_config")))
 				print("Default configuration file has been created at " .. ret.config_file)
