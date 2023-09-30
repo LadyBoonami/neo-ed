@@ -7,10 +7,12 @@ plugins.def(state)
 
 -- enable extra plugins that depend on external programs
 
-	-- depends on `pygmentize`
-	--plugins.pygmentize_mode_detect(state)
-	--plugins.pygmentize_filter(state)
+if os.execute("which pygmentize >/dev/null 2>&1") then
+	plugins.pygmentize_mode_detect(state)
+	plugins.pygmentize_filter(state)
+end
 
-	-- depends on `editorconfig`
-	--plugins.editorconfig(state)
+if os.execute("which editorconfig >/dev/null 2>&1") then
+	plugins.editorconfig(state)
+end
 ]=]
