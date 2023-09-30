@@ -72,16 +72,15 @@ function m.core_editing(state)
 		state.curr:replace(a, b, {tmp})
 	end, "join lines"})
 
---	table.insert(state.cmds.main, {"^J(.)(.)%1$", function(ctx, _, s)
---		state.curr:undo_point()
---		local a = state.curr:addr(ctx.a, "first")
---		local b = state.curr:addr(ctx.b or ctx.a, "last")
---		local new = {}
---		for _, l in ipairs(state.curr:extract(a, b)) do
---			for l_ in l:gmatch("[^" .. lib.patesc(s) .. "]*") do table.insert(new, l_) end
---		end
---		state.curr:insert(a - 1, new)
---	end, "split lines (selection) on character"})
+	table.insert(state.cmds.range_local, {"^J(.)(.*)%1$", function(m, a, b)
+		state.curr:undo_point()
+		local new = {}
+		for _, l in ipairs(state.curr:extract(a, b)) do
+			local tmp = l:gsub(m[2], "\n")
+			for l_ in tmp:gmatch("[^\n]*") do table.insert(new, l_) end
+		end
+		state.curr:insert(a - 1, new)
+	end, "split lines on pattern"})
 
 	table.insert(state.cmds.range_local, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
 		state.curr:undo_point()

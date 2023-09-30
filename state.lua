@@ -138,8 +138,8 @@ function mt.__index:main()
 	end
 end
 
-function mt.__index:quit()
-	for _, v in ipairs(self.files) do v:close() end
+function mt.__index:quit(force)
+	for _, v in ipairs(self.files) do v:close(force) end
 	os.exit(0)
 end
 

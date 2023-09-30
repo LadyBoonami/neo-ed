@@ -87,6 +87,8 @@ For a complete overview of commands, including those installed by plugins, use t
 
 - `d`: delete the selected lines
 - `j`: join the selected lines
+- `J<sep><pattern><sep>`: split the line on each match of lua pattern `<pattern>`.
+  `<sep>` may be any punctuation character (usually `/`).
 - `s<sep><pattern><sep><replacement><sep><flags>`: in the selected lines, replace lua pattern `<pattern>` with `<replacement>`.
   `<sep>` may be any punctuation character (usually `/`).
   Only replaces the first occurence unless `<flags>` contains `g`, in which case all occurences are replaced.
