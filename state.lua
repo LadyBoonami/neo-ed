@@ -18,21 +18,22 @@ function mt.__index:cmd(s)
 
 	local function local1(f, m, a)
 		a = a - #self.curr.prev
-		if a < 0 or a > #self.curr.curr then error("address out of range") end
+		assert(0 <= a and a <= #self.curr.curr, #self.curr.prev .. " <= " .. (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + #self.curr.curr))
 		f(m, a)
 	end
 
 	local function local2(f, m, a, b)
 		a = a - #self.curr.prev
 		b = b - #self.curr.prev
-		if a < 0 or a > #self.curr.curr then error("address out of range") end
-		if b < 0 or b > #self.curr.curr then error("address out of range") end
+		assert(0 <= a and a <= #self.curr.curr,  #self.curr.prev      .. " <= " .. (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + #self.curr.curr))
+		assert(a <= b and b <= #self.curr.curr, (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + b) .. " <= " .. (#self.curr.prev + #self.curr.curr))
 		f(m, a, b)
 	end
 
 	local function global2(f, m, a, b)
-		if a < 0 or a > #self.curr.prev + #self.curr.curr + #self.curr.next then error("address out of range") end
-		if b < 0 or b > #self.curr.prev + #self.curr.curr + #self.curr.next then error("address out of range") end
+		local n = #self.curr.prev + #self.curr.curr + #self.curr.next
+		assert(0 <= a and a <= n,     "0 <= " .. a .. " <= " .. n)
+		assert(a <= b and b <= n, a .. " <= " .. b .. " <= " .. n)
 		f(m, a, b)
 	end
 
