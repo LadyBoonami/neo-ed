@@ -36,12 +36,15 @@ function m.hook(h, ...)
 	end
 end
 
-function m.match(s, tbl, ...)
+function m.match(s, tbl, def, wrap, ...)
+	def  = def  or function(s) error("could not parse: " .. s) end
+	wrap = wrap or function(f, ...) return f(...) end
+
 	for _, v in ipairs(tbl) do
 		local r = {s:match(v[1])}
-		if r[1] then return v[2](..., table.unpack(r)) end
+		if r[1] then return wrap(v[2], r, ...) end
 	end
-	error("could not parse: " .. s)
+	return def(s)
 end
 
 function m.patesc(s)

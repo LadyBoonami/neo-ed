@@ -11,16 +11,76 @@ function mt.__index:closed()
 	for i, v in ipairs(self.files) do v.id = i end
 end
 
-function mt.__index:cmd(s, ctx)
-	ctx = ctx or {}
-	local cmds = {}
-	for _, v in ipairs(self.cmds.fst      ) do table.insert(cmds, v) end
-	for _, v in ipairs(self.cmds.fst_post ) do table.insert(cmds, v) end
-	for _, v in ipairs(self.cmds.snd      ) do table.insert(cmds, v) end
-	for _, v in ipairs(self.cmds.snd_post ) do table.insert(cmds, v) end
-	for _, v in ipairs(self.cmds.main     ) do table.insert(cmds, v) end
-	for _, v in ipairs(self.cmds.main_post) do table.insert(cmds, v) end
-	lib.match(s, cmds, ctx)
+function mt.__index:cmd(s)
+	local function file0(f, m)
+		f(m)
+	end
+
+	local function local1(f, m, a)
+		a = a - #self.curr.prev
+		if a < 0 or a > #self.curr.curr then error("address out of range") end
+		f(m, a)
+	end
+
+	local function local2(f, m, a, b)
+		a = a - #self.curr.prev
+		b = b - #self.curr.prev
+		if a < 0 or a > #self.curr.curr then error("address out of range") end
+		if b < 0 or b > #self.curr.curr then error("address out of range") end
+		f(m, a, b)
+	end
+
+	local function global2(f, m, a, b)
+		if a < 0 or a > #self.curr.prev + #self.curr.curr + #self.curr.next then error("address out of range") end
+		if b < 0 or b > #self.curr.prev + #self.curr.curr + #self.curr.next then error("address out of range") end
+		f(m, a, b)
+	end
+
+	local function cmd2(a, b, s)
+		local b_, s_ = lib.match(s, self.cmds.addr.cont, function() end, nil, b)
+		if b_ then return cmd2(a, b_, s_) end
+
+		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, b) then return end
+		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, b) then return end
+
+		error("could not parse: " .. s)
+	end
+
+	local function cmd1(a, s)
+		local a_, s_ = lib.match(s, self.cmds.addr.cont, function() end, nil, a)
+		if a_ then return cmd1(a_, s_) end
+
+		local s_ = s:match("^,(.*)$")
+		if s_ then
+			local b, s__ = lib.match(s_, self.cmds.addr.prim, function() end, nil)
+			if b then return cmd2(a, b, s__) end
+
+			error("could not parse: " .. s)
+		end
+
+		local s_ = s:match("^;(.*)$")
+		if s_ then return cmd2(a, a, s_) end
+
+		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, a) then return end
+		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, a) then return end
+		if not lib.match(s, self.cmds.line, function() return true end, local1, a) then return end
+
+		error("could not parse: " .. s)
+	end
+
+	local function cmd0(s)
+		local a, s_ = lib.match(s, self.cmds.addr.prim, function() end, nil)
+		if a then return cmd1(a, s_) end
+
+		if not lib.match(s, self.cmds.file, function() return true end, file0) then return end
+		if not lib.match(s, self.cmds.range_global, function() return true end, global2, 1, #self.curr.prev + #self.curr.curr + #self.curr.next) then return end
+		if not lib.match(s, self.cmds.range_local, function() return true end, local2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
+		if not lib.match(s, self.cmds.line, function() return true end, local1, #self.curr.prev + #self.curr.curr) then return end
+
+		error("could not parse: " .. s)
+	end
+
+	return cmd0(s)
 end
 
 function mt.__index:load(path)
@@ -86,12 +146,14 @@ return function(files)
 	local ret = setmetatable({}, mt)
 
 	ret.cmds = {
-		fst       = {},
-		fst_post  = {},
-		snd       = {},
-		snd_post  = {},
-		main      = {},
-		main_post = {},
+		addr = {
+			prim = {},
+			cont = {},
+		},
+		line = {},
+		range_local = {},
+		range_global = {},
+		file = {},
 	}
 
 	ret.files = {}
