@@ -3,12 +3,12 @@ local m = {}
 local lib = require "neo-ed.lib"
 
 function m.core_addr_line(state)
-	table.insert(state.cmds.addr.prim, {"^(%d+)(.*)$", function(m) return tonumber(m[1]), m[2] end, "line number"})
-	table.insert(state.cmds.addr.prim, {"^%^(.*)$", function(m) return #state.curr.prev + 1, m[1] end, "first line of selection"})
-	table.insert(state.cmds.addr.prim, {"^%.(.*)$", function(m) return #state.curr.prev + #state.curr.curr, m[1] end, "last line of selection"})
-	table.insert(state.cmds.addr.prim, {"^%$(.*)$", function(m) return #state.curr.prev + #state.curr.curr + #state.curr.next, m[1] end, "last line"})
-	table.insert(state.cmds.addr.cont, {"^%+(%d*)(.*)$", function(m, base) return base + (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "add lines"})
-	table.insert(state.cmds.addr.cont, {"^%-(%d*)(.*)$", function(m, base) return base - (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "subtract lines"})
+	table.insert(state.cmds.addr.prim, {"^(%d+)(.*)$"  , function(m      ) return tonumber(m[1]), m[2]                                         end, "line number"            })
+	table.insert(state.cmds.addr.prim, {"^%^(.*)$"     , function(m      ) return #state.curr.prev + 1, m[1]                                   end, "first line of selection"})
+	table.insert(state.cmds.addr.prim, {"^%.(.*)$"     , function(m      ) return #state.curr.prev + #state.curr.curr, m[1]                    end, "last line of selection" })
+	table.insert(state.cmds.addr.prim, {"^%$(.*)$"     , function(m      ) return #state.curr.prev + #state.curr.curr + #state.curr.next, m[1] end, "last line"              })
+	table.insert(state.cmds.addr.cont, {"^%+(%d*)(.*)$", function(m, base) return base + (m[1] == "" and 1 or tonumber(m[1])), m[2]            end, "add lines"              })
+	table.insert(state.cmds.addr.cont, {"^%-(%d*)(.*)$", function(m, base) return base - (m[1] == "" and 1 or tonumber(m[1])), m[2]            end, "subtract lines"         })
 end
 
 function m.core_addr_pat(state)
@@ -88,8 +88,13 @@ function m.core_editing(state)
 			if a <= i and i <= b then
 				if m[4]:find("g") then
 					state.curr.curr[i] = l:gsub(m[2], m[3])
-				else
+				elseif tonumber(m[4]) then
+					local pos = lib.find_nth(l, m[2], tonumber(m[4]))
+					if pos then state.curr.curr[i] = l:gsub(m[2], m[3]) end
+				elseif m[4] == "" then
 					state.curr.curr[i] = l:gsub(m[2], m[3], 1)
+				else
+					error("could not parse flags: " .. m[4])
 				end
 			end
 		end
@@ -150,19 +155,21 @@ function m.core(state)
 end
 
 function m.align(state)
-	table.insert(state.cmds.range_local, {"^:align *(%p)(.-)%1$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^:align *(%p)(.-)%1(%d*)$", function(m, a, b)
+		local n = tonumber(m[3]) or 1
 		state.curr:undo_point()
 		local max = 0
 		for i, l in ipairs(state.curr.curr) do
 			if a <= i and i <= b then
-				local pre = l:match("^(.-)" .. m[2])
-				if pre then max = math.max(max, utf8.len(pre)) end
+				local bytes = lib.find_nth(l, m[2], n)
+				if bytes then max = math.max(max, utf8.len(l:sub(1, bytes - 1))) end
 			end
 		end
+		print(max)
 		for i, l in ipairs(state.curr.curr) do
 			if a <= i and i <= b then
-				local pre = l:match("^(.-)" .. m[2])
-				if pre then state.curr.curr[i] = pre .. (" "):rep(max - utf8.len(pre)) .. l:sub(#pre + 1) end
+				local bytes = lib.find_nth(l, m[2], n)
+				if bytes then state.curr.curr[i] = l:sub(1, bytes - 1) .. (" "):rep(max - utf8.len(l:sub(1, bytes - 1))) .. l:sub(bytes) end
 			end
 		end
 	end, "align matched pattern by padding with spaces"})
@@ -281,21 +288,20 @@ function m.tabs_filter(state)
 		for i, l in ipairs(lines) do
 			local spc = (" "):rep(b.conf.tabs - 1)
 			lines[i] = l
-				:gsub("^(\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
-				:gsub("^(\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
-				:gsub("^(\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m" .. spc)
-				:gsub("^(\t\t\t)\t", "%1\x1b[36m│\x1b[0m" .. spc)
-				:gsub("^(\t\t)\t", "%1\x1b[32m│\x1b[0m" .. spc)
-				:gsub("^(\t)\t", "%1\x1b[33m│\x1b[0m" .. spc)
-				:gsub("^\t", "%1\x1b[31m│\x1b[0m" .. spc)
 				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
-				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t", "%1\x1b[35m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t\t\t)\t", "%1\x1b[34m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t\t)\t", "%1\x1b[36m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t)\t", "%1\x1b[32m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t)\t", "%1\x1b[33m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m)\t", "%1\x1b[31m│\x1b[0m" .. spc)
-				:gsub("\t", "\x1b[34m│\x1b[0m" .. spc)
+				:gsub(          "^(\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
+				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t"     , "%1\x1b[35m│\x1b[0m" .. spc)
+				:gsub(          "^(\t\t\t\t\t)\t"     , "%1\x1b[35m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t\t\t)\t"       , "%1\x1b[34m│\x1b[0m" .. spc)
+				:gsub(          "^(\t\t\t\t)\t"       , "%1\x1b[34m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t\t)\t"         , "%1\x1b[36m│\x1b[0m" .. spc)
+				:gsub(          "^(\t\t\t)\t"         , "%1\x1b[36m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t\t)\t"           , "%1\x1b[32m│\x1b[0m" .. spc)
+				:gsub(          "^(\t\t)\t"           , "%1\x1b[32m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m\t)\t"             , "%1\x1b[33m│\x1b[0m" .. spc)
+				:gsub(          "^(\t)\t"             , "%1\x1b[33m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m)\t"               , "%1\x1b[31m│\x1b[0m" .. spc)
+				:gsub(          "\t"                  ,   "\x1b[34m│\x1b[0m" .. spc)
 		end
 		return lines
 	end)

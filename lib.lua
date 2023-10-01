@@ -16,6 +16,15 @@ rl.set_complete_function(function(text, from, to)
 	return {text:sub(from, to) .. "\t"}
 end)
 
+function m.find_nth(s, pat, n)
+	local ret = 1
+	for i = 1, n do
+		ret = s:find(pat, ret + 1)
+		if not ret then return nil end
+	end
+	return ret
+end
+
 function m.hook(h, ...)
 	if m.trace then
 		local info = debug.getinfo(2, "S")
