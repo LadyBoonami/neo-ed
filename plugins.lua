@@ -125,11 +125,12 @@ function m.core_help(state)
 end
 
 function m.core_state(state)
-	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load (m[1]) end, "open file"       })
-	table.insert(state.cmds.file, {"^q$"      , function( ) state.curr:close(    ) end,       "close file"})
-	table.insert(state.cmds.file, {"^Q$"      , function( ) state.curr:close(true) end, "force close file"})
-	table.insert(state.cmds.file, {"^qq$"     , function( ) state     :quit (    ) end,       "quit"      })
-	table.insert(state.cmds.file, {"^QQ$"     , function( ) state     :quit (true) end, "force quit"      })
+	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load    (m[1])                             end, "open file"       })
+	table.insert(state.cmds.file, {"^f +(.+)$", function(m) state.curr:set_path(m[1]); state.curr.modified = true end, "set file name"   })
+	table.insert(state.cmds.file, {"^q$"      , function( ) state.curr:close   (    )                             end,       "close file"})
+	table.insert(state.cmds.file, {"^Q$"      , function( ) state.curr:close   (true)                             end, "force close file"})
+	table.insert(state.cmds.file, {"^qq$"     , function( ) state     :quit    (    )                             end,       "quit"      })
+	table.insert(state.cmds.file, {"^QQ$"     , function( ) state     :quit    (true)                             end, "force quit"      })
 
 	table.insert(state.cmds.file, {"^u$"      , function( ) state.curr:undo(    )                     end, "undo"                                         })
 	table.insert(state.cmds.file, {"^w$"      , function( ) state.curr:save(    )                     end, "write changes to the current file"            })

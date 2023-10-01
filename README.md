@@ -64,6 +64,7 @@ For a complete overview of commands, including those installed by plugins, use t
 
 - `h`: show command help
 - `e <path>`: open specified file
+- `f <path>`: set file name
 - `q`: close file
 - `Q`: close file even if modified
 - `qq`: quit editor
