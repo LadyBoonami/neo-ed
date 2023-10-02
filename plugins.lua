@@ -66,6 +66,17 @@ function m.core_editing(state)
 		state.curr:focus(a, b)
 	end, "select (\"focus\") lines"})
 
+	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
+		local hsz = #state.curr.history
+		for i = b, a, -1 do
+			if m[1] == "g" and     state.curr.curr[i]:find(m[3])
+			or m[1] == "v" and not state.curr.curr[i]:find(m[3]) then
+				state:cmd(tostring(#state.curr.prev + i) .. m[4])
+			end
+		end
+		for i = #state.curr.history, hsz + 2, -1 do state.curr.history[i] = nil end
+	end, "perform command on every (non-)matching line"})
+
 	table.insert(state.cmds.line, {"^i$", function(m, a)
 		state.curr:undo_point()
 		local i = 1

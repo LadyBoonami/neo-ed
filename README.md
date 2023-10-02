@@ -83,10 +83,15 @@ For a complete overview of commands, including those installed by plugins, use t
   The command history (press Up) contains the indentation prefix of the previous line.
 - `c`: replace the selected line.
   The command history (press Up) contains the previous contents of the line, and the indentation prefix of the line.
+- `i`: start insert lines before the selected line.
+  `Ctrl+D` to exit.
+  The command history (press Up) contains the indentation prefix of the next line.
 
 ### Local Range
 
 - `d`: delete the selected lines
+- `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
+  `<sep>` may be any punctuation character (usually `/`).
 - `j`: join the selected lines
 - `J<sep><pattern><sep>`: split the line on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
@@ -95,6 +100,7 @@ For a complete overview of commands, including those installed by plugins, use t
   Only replaces the first occurence by default.
   If `<mode>` is `g`, replaces all occurences.
   If `<mode>` is a number, replace that occurence.
+- `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
 
 ### Global Range
 
