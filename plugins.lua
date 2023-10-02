@@ -104,6 +104,14 @@ function m.core_editing(state)
 		state.curr:insert(a - 1, new)
 	end, "split lines on pattern"})
 
+	table.insert(state.cmds.line, {"^r +(!?)(.*)$", function(m, a)
+		state.curr:undo_point()
+		local h <close> = #m[1] > 0 and io.popen(m[2], "r") or assert(io.open(m[2], "r"))
+		local tmp = {}
+		for l in h:lines() do table.insert(tmp, l) end
+		state.curr:insert(a, tmp)
+	end, "append text from file / command after"})
+
 	table.insert(state.cmds.range_local, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
 		state.curr:undo_point()
 		for i, l in ipairs(state.curr.curr) do

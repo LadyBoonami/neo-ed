@@ -86,6 +86,8 @@ For a complete overview of commands, including those installed by plugins, use t
 - `i`: start insert lines before the selected line.
   `Ctrl+D` to exit.
   The command history (press Up) contains the indentation prefix of the next line.
+- `r <filename>`: insert contents of file after the selected line.
+- `r !<command>`: insert output of command after the selected line.
 
 ### Local Range
 
