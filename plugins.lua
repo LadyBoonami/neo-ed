@@ -66,6 +66,17 @@ function m.core_editing(state)
 		state.curr:focus(a, b)
 	end, "select (\"focus\") lines"})
 
+	table.insert(state.cmds.line, {"^i$", function(m, a)
+		state.curr:undo_point()
+		local i = 1
+		while true do
+			local i_ = i == 1 and (a + i - 1) or (a + i - 2)
+			local pre = state.curr.curr[i_] and state.curr.curr[i_]:match("^(%s*)") or ""
+			local s = lib.readline("", {pre})
+			if s then table.insert(state.curr.curr, a + i - 1, s); i = i + 1 else break end
+		end
+	end, "insert lines before"})
+
 	table.insert(state.cmds.range_local, {"^j$", function(m, a, b)
 		state.curr:undo_point()
 		local tmp = table.concat(state.curr.curr, "", a, b)

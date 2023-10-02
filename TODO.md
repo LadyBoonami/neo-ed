@@ -1,7 +1,5 @@
 - `g/<pattern>/<command>`: global command.
-
-- `i`: insert before.
-  Redundant with `a` but trivial to implement.
+  Needs sorting out of undo point logic first, otherwise this command generates a heap of undo points.
 
 - Marks?
 
