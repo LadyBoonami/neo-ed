@@ -17,7 +17,7 @@ rl.set_complete_function(function(text, from, to)
 end)
 
 function m.find_nth(s, pat, n)
-	local ret = 1
+	local ret = 0
 	for i = 1, n do
 		ret = s:find(pat, ret + 1)
 		if not ret then return nil end

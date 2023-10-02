@@ -112,7 +112,7 @@ function m.core_editing(state)
 					state.curr.curr[i] = l:gsub(m[2], m[3])
 				elseif tonumber(m[4]) then
 					local pos = lib.find_nth(l, m[2], tonumber(m[4]))
-					if pos then state.curr.curr[i] = l:gsub(m[2], m[3]) end
+					if pos then state.curr.curr[i] = l:sub(1, pos - 1) .. l:sub(pos):gsub(m[2], m[3], 1) end
 				elseif m[4] == "" then
 					state.curr.curr[i] = l:gsub(m[2], m[3], 1)
 				else
