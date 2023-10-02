@@ -385,11 +385,4 @@ function m.pygmentize_mode_detect(state)
 	table.insert(state.cmds.file, {"^:guess$", function() guess(state.curr) end, "guess file type from content"})
 end
 
---[[
-	TODO:
-	- language-specific
-	- trim
-	- autosave
-]]
-
 return m
