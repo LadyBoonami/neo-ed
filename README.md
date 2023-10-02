@@ -2,6 +2,18 @@
 
 neo-ed is the new standard editor.
 
+## Installation
+
+Dependencies:
+
+- Lua 5.4
+- Lua `readline` bindings
+- Optional: `pygments` for syntax highlighting
+- Optional: `wl-clipboard` or `xclip` for clipboard support
+- Optional: `editorconfig-core-c` for Editorconfig support
+
+Put this repository into your `LUA_PATH`, and symlink `main.lua` as `ned` into your `PATH`.
+
 ## Command Types
 
 `neo-ed`'s commands match the following categories:
