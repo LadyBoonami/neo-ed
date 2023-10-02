@@ -23,8 +23,8 @@ function mt.__index:cmd(s)
 	end
 
 	local function local2(f, m, a, b)
-		a = a - #self.curr.prev
-		b = b - #self.curr.prev
+		a = a and a - #self.curr.prev or 1
+		b = b and b - #self.curr.prev or #self.curr.curr
 		assert(0 <= a and a <= #self.curr.curr,  #self.curr.prev      .. " <= " .. (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + #self.curr.curr))
 		assert(a <= b and b <= #self.curr.curr, (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + b) .. " <= " .. (#self.curr.prev + #self.curr.curr))
 		f(m, a, b)
@@ -32,6 +32,8 @@ function mt.__index:cmd(s)
 
 	local function global2(f, m, a, b)
 		local n = #self.curr.prev + #self.curr.curr + #self.curr.next
+		a = a or 1
+		b = b or n
 		assert(0 <= a and a <= n,     "0 <= " .. a .. " <= " .. n)
 		assert(a <= b and b <= n, a .. " <= " .. b .. " <= " .. n)
 		f(m, a, b)
@@ -55,8 +57,7 @@ function mt.__index:cmd(s)
 		if s_ then
 			local b, s__ = lib.match(s_, self.cmds.addr.prim, function() end, nil)
 			if b then return cmd2(a, b, s__) end
-
-			error("could not parse: " .. s)
+			return cmd2(a, nil, s_)
 		end
 
 		local s_ = s:match("^;(.*)$")
@@ -72,6 +73,8 @@ function mt.__index:cmd(s)
 	local function cmd0(s)
 		local a, s_ = lib.match(s, self.cmds.addr.prim, function() end, nil)
 		if a then return cmd1(a, s_) end
+
+		if s:find("^,(.*)$") then return cmd1(nil, s) end
 
 		if not lib.match(s, self.cmds.file, function() return true end, file0) then return end
 		if not lib.match(s, self.cmds.range_global, function() return true end, global2, 1, #self.curr.prev + #self.curr.curr + #self.curr.next) then return end
