@@ -269,6 +269,22 @@ function m.find(state)
 	end, "search for pattern"})
 end
 
+function m.language(state)
+	local comment = {
+		lua = "--",
+	}
+
+	table.insert(state.cmds.range_local, {":comment", function(m, a, b)
+		state.curr:undo_point()
+		for i = a, b do state.curr.curr[i] = comment[state.curr.mode] .. state.curr.curr[i] end
+	end, "comment out lines"})
+
+	table.insert(state.cmds.range_local, {":uncomment", function(m, a, b)
+		state.curr:undo_point()
+		for i = a, b do state.curr.curr[i] = state.curr.curr[i]:gsub("^" .. lib.patesc(comment[state.curr.mode]), "") end
+	end, "uncomment lines"})
+end
+
 function m.lua_cmd(state)
 	table.insert(state.cmds.file, {"^:lua *(.*)$", function(m)
 		assert(load(m[1], "interactive", "t"))()
@@ -362,6 +378,7 @@ function m.def(state)
 	m.config_file(state)
 	m.eol_filter (state)
 	m.find       (state)
+	m.language   (state)
 	m.lua_cmd    (state)
 	m.reload     (state)
 	m.shell      (state)
