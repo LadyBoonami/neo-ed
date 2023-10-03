@@ -315,23 +315,41 @@ function m.tabs_filter(state)
 	table.insert(state.cmds.file, {"^:indent +(%d+)$", function(m) state.curr.conf.indent = tonumber(m[1]) end, "set indentation"})
 
 	table.insert(state.print.post, function(lines, b)
+		local color = {
+			function(s) return "\x1b[31m" .. s .. "\x1b[0m" end,
+			function(s) return "\x1b[33m" .. s .. "\x1b[0m" end,
+			function(s) return "\x1b[32m" .. s .. "\x1b[0m" end,
+			function(s) return "\x1b[36m" .. s .. "\x1b[0m" end,
+			function(s) return "\x1b[34m" .. s .. "\x1b[0m" end,
+			function(s) return "\x1b[35m" .. s .. "\x1b[0m" end,
+		}
+
+		local function spcs(wsp, t, i)
+			t = t or {}
+			i = i or 0
+			if wsp == "" then return table.concat(t) end
+			table.insert(t, color[i + 1]("┆"))
+			table.insert(t, wsp:sub(2, b.conf.indent))
+			return spcs(wsp:sub(b.conf.indent + 1), t, i + 1)
+		end
+
+		local tab = (" "):rep(b.conf.tabs - 1)
+		local tab_ = ("┄"):rep(b.conf.tabs - 1) .. "┤"
+		local function tabs(wsp, t, i)
+			t = t or {}
+			i = i or 0
+			if wsp == "" then return table.concat(t) end
+			if wsp:find("^ ") then return spcs(wsp, t, i) end
+			table.insert(t, color[i + 1]("│"))
+			table.insert(t, tab)
+			return tabs(wsp:sub(2), t, i + 1)
+		end
+
 		for i, l in ipairs(lines) do
-			local spc = (" "):rep(b.conf.tabs - 1)
 			lines[i] = l
-				:gsub("^(\x1b[^m]-m\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
-				:gsub(          "^(\t\t\t\t\t\t)(\t+)", function(a, b) return a .. b:gsub("\t", "\x1b[37m│\x1b[0m" .. spc) end)
-				:gsub("^(\x1b[^m]-m\t\t\t\t\t)\t"     , "%1\x1b[35m│\x1b[0m" .. spc)
-				:gsub(          "^(\t\t\t\t\t)\t"     , "%1\x1b[35m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t\t\t)\t"       , "%1\x1b[34m│\x1b[0m" .. spc)
-				:gsub(          "^(\t\t\t\t)\t"       , "%1\x1b[34m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t\t)\t"         , "%1\x1b[36m│\x1b[0m" .. spc)
-				:gsub(          "^(\t\t\t)\t"         , "%1\x1b[36m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t\t)\t"           , "%1\x1b[32m│\x1b[0m" .. spc)
-				:gsub(          "^(\t\t)\t"           , "%1\x1b[32m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m\t)\t"             , "%1\x1b[33m│\x1b[0m" .. spc)
-				:gsub(          "^(\t)\t"             , "%1\x1b[33m│\x1b[0m" .. spc)
-				:gsub("^(\x1b[^m]-m)\t"               , "%1\x1b[31m│\x1b[0m" .. spc)
-				:gsub(          "\t"                  ,   "\x1b[34m│\x1b[0m" .. spc)
+				:gsub("^(\x1b[^m]-m)([\t ]+)" , function(pre, wsp) return tabs(wsp) end)
+				:gsub(            "^([\t ]+)" , function(     wsp) return spcs(wsp) end)
+				:gsub("\t", "\x1b[34m" .. tab_ .. "\x1b[0m")
 		end
 		return lines
 	end)
