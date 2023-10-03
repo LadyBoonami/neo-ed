@@ -90,10 +90,16 @@ function mt.__index:save(path)
 
 	lib.hook(self.state.hooks.save_pre, self)
 
+	if self.conf.trim then
+		for i, l in ipairs(self.prev) do self.prev[i] = l:match("^(.-)%s*$") end
+		for i, l in ipairs(self.curr) do self.curr[i] = l:match("^(.-)%s*$") end
+		for i, l in ipairs(self.next) do self.next[i] = l:match("^(.-)%s*$") end
+	end
+
 	local h = io.open(self.path, "w")
 	local all = self:all()
 	for _, l in ipairs(all) do
-		h:write(self.conf.trim and l:match("^(.-)%s*$") or l)
+		h:write(l)
 		if i ~= #all or self.conf.end_nl then h:write(self.conf.crlf and "\r\n" or "\n") end
 	end
 	h:close()

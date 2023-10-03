@@ -17,7 +17,7 @@ function m.core_addr_pat(state)
 		for i, l in ipairs(tmp) do
 			if l:find(m[2]) then return i, m[3] end
 		end
-		error("pattern not found: " .. m[1] .. pat .. m[1])
+		error("pattern not found: " .. m[1] .. m[2] .. m[1])
 	end, "first matching line"})
 
 	table.insert(state.cmds.addr.cont, {"^/(.-)/(.*)$", function(m, base)
