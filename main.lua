@@ -2,4 +2,5 @@
 
 local state = require "neo-ed.state"
 
+print("")
 state(arg):main()
