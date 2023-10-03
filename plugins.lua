@@ -328,7 +328,7 @@ function m.tabs_filter(state)
 			t = t or {}
 			i = i or 0
 			if wsp == "" then return table.concat(t) end
-			table.insert(t, color[i + 1]("┆"))
+			table.insert(t, color[i % 6 + 1]("┆"))
 			table.insert(t, wsp:sub(2, b.conf.indent))
 			return spcs(wsp:sub(b.conf.indent + 1), t, i + 1)
 		end
@@ -340,7 +340,7 @@ function m.tabs_filter(state)
 			i = i or 0
 			if wsp == "" then return table.concat(t) end
 			if wsp:find("^ ") then return spcs(wsp, t, i) end
-			table.insert(t, color[i + 1]("│"))
+			table.insert(t, color[i % 6 + 1]("│"))
 			table.insert(t, tab)
 			return tabs(wsp:sub(2), t, i + 1)
 		end
@@ -383,6 +383,10 @@ function m.editorconfig(state)
 			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
 			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
 			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
+
+			for k, v in pairs(conf) do
+				if k:find("^ned%-") then b.conf.ext[k] = v end
+			end
 		end
 	end)
 end
