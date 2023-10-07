@@ -269,22 +269,6 @@ function m.find(state)
 	end, "search for pattern"})
 end
 
-function m.language(state)
-	local comment = {
-		lua = "--",
-	}
-
-	table.insert(state.cmds.range_local, {":comment", function(m, a, b)
-		state.curr:undo_point()
-		for i = a, b do state.curr.curr[i] = comment[state.curr.mode] .. state.curr.curr[i] end
-	end, "comment out lines"})
-
-	table.insert(state.cmds.range_local, {":uncomment", function(m, a, b)
-		state.curr:undo_point()
-		for i = a, b do state.curr.curr[i] = state.curr.curr[i]:gsub("^" .. lib.patesc(comment[state.curr.mode]), "") end
-	end, "uncomment lines"})
-end
-
 function m.lua_cmd(state)
 	table.insert(state.cmds.file, {"^:lua *(.*)$", function(m)
 		assert(load(m[1], "interactive", "t"))()
@@ -378,7 +362,6 @@ function m.def(state)
 	m.config_file(state)
 	m.eol_filter (state)
 	m.find       (state)
-	m.language   (state)
 	m.lua_cmd    (state)
 	m.reload     (state)
 	m.shell      (state)
@@ -402,7 +385,8 @@ function m.editorconfig(state)
 			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
 
 			for k, v in pairs(conf) do
-				if k:find("^ned%-") then b.conf.ext[k] = v end
+				local k_ = k:match("^ned%-(.*)$")
+				if k_ then b.conf.ext[k_] = v end
 			end
 		end
 	end)
@@ -410,10 +394,10 @@ end
 
 function m.pygmentize_filter(state)
 	state.print.highlight = function(lines, curr)
-		if curr.mode then
+		if curr.conf.ext.mode then
 			local pre, main, suf = (table.concat(lines, "\n") .. "\n"):match("^(%s*)(.-\n)(%s*)$")
 			if pre then
-				local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.mode), main), suf}
+				local tmp = table.concat{pre, lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.ext.mode), main), suf}
 				local ret = {}
 				for l in tmp:gmatch("[^\n]*") do table.insert(ret, l) end
 				table.remove(ret)
@@ -424,20 +408,20 @@ function m.pygmentize_filter(state)
 		return lines
 	end
 
-	table.insert(state.cmds.file, {"^:mode +(.+)$", function(m) state.curr.mode = m[1] end, "set file type"})
+	table.insert(state.cmds.file, {"^:mode +(.+)$", function(m) state.curr.conf.ext.mode = m[1] end, "set file type"})
 end
 
 function m.pygmentize_mode_detect(state)
 	local function guess(curr)
-		curr.mode = lib.pipe("pygmentize -C", table.concat(curr:all(), "\n")):match("^[^\n]*")
+		curr.conf.ext.mode = lib.pipe("pygmentize -C", table.concat(curr:all(), "\n")):match("^[^\n]*")
 	end
 
 	table.insert(state.hooks.load, function(curr)
-		if curr.path and not curr.mode then
+		if curr.path and not curr.conf.ext.mode then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
-			curr.mode = h:read("l")
+			curr.conf.ext.mode = h:read("l")
 		end
-		if #curr.curr > 100 and (not curr.mode or curr.mode == "text") then guess(curr) end
+		if #curr.curr > 100 and (not curr.conf.ext.mode or curr.conf.ext.mode == "text") then guess(curr) end
 	end)
 
 	table.insert(state.cmds.file, {"^:guess$", function() guess(state.curr) end, "guess file type from content"})

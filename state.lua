@@ -112,7 +112,7 @@ function mt.__index:main()
 					i,
 					i == self.curr.id and "]" or " ",
 					f.path,
-					f.mode,
+					f.conf.ext.mode,
 					#f.prev + #f.curr + #f.next,
 					f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 				))

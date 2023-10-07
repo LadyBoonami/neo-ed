@@ -170,6 +170,7 @@ return function(state, path)
 		tabs    = 4    ,
 		trim    = false,
 	}
+	ret.conf.ext = {}
 
 	lib.hook(ret.state.hooks.load, ret)
 
