@@ -289,8 +289,12 @@ function m.reload(state)
 end
 
 function m.shell(state)
+	local function cmdline(s)
+		return s:gsub("%f[%%]%%", state.curr.path):gsub("%%%%", "%%")
+	end
+
 	table.insert(state.cmds.file, {"^!(.+)$", function(m)
-		local ok, how, no = os.execute(m[1])
+		local ok, how, no = os.execute(cmdline(m[1]))
 		if not ok then print(how, no) end
 		state.skip_print = true
 	end, "execute shell command"})
@@ -304,7 +308,7 @@ function m.shell(state)
 		table.insert(tmp, "")
 		tmp = table.concat(tmp, "\n")
 		local ret = {}
-		for l in lib.pipe(m[1], tmp):gmatch("[^\n]*") do table.insert(ret, l) end
+		for l in lib.pipe(cmdline(m[1]), tmp):gmatch("[^\n]*") do table.insert(ret, l) end
 		table.remove(ret)
 		state.curr:replace(a, b, ret)
 	end, "pipe lines through shell command"})
@@ -366,6 +370,12 @@ function m.def(state)
 	m.reload     (state)
 	m.shell      (state)
 	m.tabs_filter(state)
+end
+
+function m.autocmd(state)
+	table.insert(state.hooks.save_post, function(b)
+		if b.conf.ext.autocmd then b.state:cmd(b.conf.ext.autocmd) end
+	end)
 end
 
 function m.editorconfig(state)

@@ -15,4 +15,7 @@ end
 if os.execute("which editorconfig >/dev/null 2>&1") then
 	plugins.editorconfig(state)
 end
+
+-- enable extra plugins which may be considered dangerous
+--plugins.autocmd(state)
 ]=]
