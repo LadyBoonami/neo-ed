@@ -92,34 +92,25 @@ function mt.__index:load(path)
 	table.insert(self.files, ret)
 	ret.id = #self.files
 	self.curr = ret
+	ret:print()
 	return ret
 end
 
 function mt.__index:main()
 	while true do
-		if not self.skip_print then
-			lib.hook(self.hooks.print_pre, self)
-			local lines = {}
-			for i = #self.curr.prev + 1, #self.curr.prev + #self.curr.curr do lines[i] = true end
-			self.curr:print(lines)
-			lib.hook(self.hooks.print_post, self)
-
-			print()
-			local w = #tostring(#self.files)
-			for i, f in ipairs(self.files) do
-				print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[34m%d\x1b[0m lines%s"):format(
-					i == self.curr.id and "[" or " ",
-					i,
-					i == self.curr.id and "]" or " ",
-					f.path,
-					f.conf.ext.mode,
-					#f.prev + #f.curr + #f.next,
-					f.modified and ", \x1b[35mmodified\x1b[0m" or ""
-				))
-			end
+		print()
+		local w = #tostring(#self.files)
+		for i, f in ipairs(self.files) do
+			print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[34m%d\x1b[0m lines%s"):format(
+				i == self.curr.id and "[" or " ",
+				i,
+				i == self.curr.id and "]" or " ",
+				f.path,
+				f.conf.ext.mode,
+				#f.prev + #f.curr + #f.next,
+				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
+			))
 		end
-		self.skip_print = nil
-
 		if self.msg then
 			print("\x1b[31m" .. self.msg .. "\x1b[0m")
 			self.msg = nil
@@ -130,7 +121,6 @@ function mt.__index:main()
 		if not ok then
 			self.msg = "failed to read input: " .. cmd
 		elseif not cmd then self:quit()
-		elseif cmd == "" then ;
 		else
 			table.insert(self.history, cmd)
 			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
@@ -164,6 +154,8 @@ return function(files)
 
 	ret.hooks = {
 		close      = {},
+		diff_pre   = {},
+		diff_post  = {},
 		load       = {},
 		print_pre  = {},
 		print_post = {},

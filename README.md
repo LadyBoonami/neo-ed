@@ -109,11 +109,14 @@ For a complete overview of commands, including those installed by plugins, use t
 - `j`: join the selected lines
 - `J<sep><pattern><sep>`: split the line on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
+- `m<addr>`: move selected lines after `<addr>`.
+  `<addr>` must be outside the range of selected lines.
 - `s<sep><pattern><sep><replacement><sep><mode>`: in the selected lines, replace lua pattern `<pattern>` with `<replacement>`.
   `<sep>` may be any punctuation character (usually `/`).
   Only replaces the first occurence by default.
   If `<mode>` is `g`, replaces all occurences.
   If `<mode>` is a number, replace that occurence.
+- `t<addr>`: copy (transfer) selected lines after `<addr>`.
 - `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
 
 ### Global Range

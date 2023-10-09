@@ -1,17 +1,28 @@
+local posix = require "posix"
 local lib = require "neo-ed.lib"
 
 local mt = {
 	__index = {},
 }
 
-function mt.__index:addr(i, def)
-	if i then
-		if i < #self.prev then error("address outside current selection") end
-		if i > #self.prev + #self.curr then error("address outside current selection") end
-		return i - #self.prev
+function mt.__index:addr(s, loc)
+	local function cont(a, s)
+		local a_, s_ = lib.match(s, self.state.cmds.addr.cont, function() end, nil, a)
+		if a_ then return cont(a_, s_) end
+		if s == "" then return a end
+		error("could not parse: " .. s)
 	end
-	if def == "first" then return 1          end
-	if def == "last"  then return #self.curr end
+
+	local a, s_ = lib.match(s, self.state.cmds.addr.prim, function() end, nil)
+	if a then
+		a = cont(a, s_)
+		if loc then
+			a = a - #self.prev
+			assert(0 <= a and a <= #self.curr, #self.prev .. " <= " .. (#self.prev + a) .. " <= " .. (#self.prev + #self.curr))
+		end
+		return a
+	end
+	error("could not parse: " .. s)
 end
 
 function mt.__index:all()
@@ -22,11 +33,39 @@ function mt.__index:all()
 	return ret
 end
 
+function mt.__index:change(f)
+	if self._changing then f() else
+		self._changing = true
+		self:undo_point()
+		local ok, err = xpcall(f, debug.traceback, self)
+		self._changing = nil
+		if not ok then
+			self:undo()
+			error(err)
+		end
+		self:diff()
+	end
+end
+
 function mt.__index:close(force)
 	if self.modified and not force then error("buffer modified") end
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
+end
+
+function mt.__index:diff()
+	local pa = (os.getenv("HOME") or "/tmp") .. "/.ned-old"
+	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
+	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
+	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
+	for _, l in ipairs(self.history[#self.history].curr) do posix.unistd.write(ha, l); posix.unistd.write(ha, "\n") end
+	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l); posix.unistd.write(hb, "\n") end
+	posix.unistd.close(ha)
+	posix.unistd.close(hb)
+	os.execute("diff -u --color=always " .. lib.shellesc(pa) .. " " .. lib.shellesc(pb) .. " | tail -n +3")
+	posix.unistd.unlink(pa)
+	posix.unistd.unlink(pb)
 end
 
 function mt.__index:extract(a, b)
@@ -49,10 +88,18 @@ function mt.__index:focus(first, last)
 end
 
 function mt.__index:insert(a, tbl)
+	print("insert", a, #tbl)
 	for i, l in ipairs(tbl) do table.insert(self.curr, a + i, l) end
 end
 
 function mt.__index:print(lines)
+	lib.hook(self.state.hooks.print_pre, self)
+
+	if not lines then
+		lines = {}
+		for i = 1, #self.curr do lines[#self.prev + i] = true end
+	end
+
 	local all = self:all()
 
 	local function go(f)
@@ -78,6 +125,8 @@ function mt.__index:print(lines)
 	for i, l in ipairs(all) do
 		if lines[i] then io.stdout:write(("%" .. tostring(w) .. "d│%s\n"):format(i, l)) end
 	end
+
+	lib.hook(self.state.hooks.print_post, self)
 end
 
 function mt.__index:replace(a, b, tbl)
@@ -156,8 +205,6 @@ return function(state, path)
 			for l in h:lines() do table.insert(ret.curr, l) end
 		end
 	end
-
-	if not ret.curr[1] then table.insert(ret.curr, "") end
 
 	ret.history  = {}
 	ret.modified = false

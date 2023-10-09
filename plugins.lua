@@ -42,93 +42,122 @@ end
 
 function m.core_editing(state)
 	table.insert(state.cmds.line, {"^a$", function(m, a)
-		state.curr:undo_point()
-		local i = 1
-		while true do
-			local pre = state.curr.curr[a + i - 1] and state.curr.curr[a + i - 1]:match("^(%s*)") or ""
-			local s = lib.readline("", {pre})
-			if s then table.insert(state.curr.curr, a + i, s); i = i + 1 else break end
-		end
+		state.curr:change(function(buf)
+			local i = 1
+			while true do
+				local pre = buf.curr[a + i - 1] and buf.curr[a + i - 1]:match("^(%s*)") or ""
+				local s = lib.readline("", {pre})
+				if s then table.insert(buf.curr, a + i, s); i = i + 1 else break end
+			end
+		end)
 	end, "append lines after"})
 
 	table.insert(state.cmds.line, {"^c$", function(m, a)
-		state.curr:undo_point()
-		local pre = state.curr.curr[a]:match("^(%s*)")
-		state.curr.curr[a] = lib.readline("", {pre, state.curr.curr[a]})
+		state.curr:change(function(buf)
+			local pre = buf.curr[a]:match("^(%s*)")
+			buf.curr[a] = lib.readline("", {pre, buf.curr[a]})
+		end)
 	end, "change line"})
 
 	table.insert(state.cmds.range_local, {"^d$", function(m, a, b)
-		state.curr:undo_point()
-		state.curr:extract(a, b)
+		state.curr:change(function(buf)
+			buf:extract(a, b)
+		end)
 	end, "delete lines (entire selection)"})
 
 	table.insert(state.cmds.range_global, {"^f$", function(m, a, b)
 		state.curr:focus(a, b)
+		state.curr:print()
 	end, "select (\"focus\") lines"})
 
 	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
-		local hsz = #state.curr.history
-		for i = b, a, -1 do
-			if m[1] == "g" and     state.curr.curr[i]:find(m[3])
-			or m[1] == "v" and not state.curr.curr[i]:find(m[3]) then
-				state:cmd(tostring(#state.curr.prev + i) .. m[4])
+		state.curr:change(function(buf)
+			for i = b, a, -1 do
+				if m[1] == "g" and     buf.curr[i]:find(m[3])
+				or m[1] == "v" and not buf.curr[i]:find(m[3]) then
+					state:cmd(tostring(#buf.prev + i) .. m[4])
+				end
 			end
-		end
-		for i = #state.curr.history, hsz + 2, -1 do state.curr.history[i] = nil end
+		end)
 	end, "perform command on every (non-)matching line"})
 
 	table.insert(state.cmds.line, {"^i$", function(m, a)
-		state.curr:undo_point()
-		local i = 1
-		while true do
-			local i_ = i == 1 and (a + i - 1) or (a + i - 2)
-			local pre = state.curr.curr[i_] and state.curr.curr[i_]:match("^(%s*)") or ""
-			local s = lib.readline("", {pre})
-			if s then table.insert(state.curr.curr, a + i - 1, s); i = i + 1 else break end
-		end
+		state.curr:change(function(buf)
+			local i = 1
+			while true do
+				local i_ = i == 1 and (a + i - 1) or (a + i - 2)
+				local pre = buf.curr[i_] and buf.curr[i_]:match("^(%s*)") or ""
+				local s = lib.readline("", {pre})
+				if s then table.insert(buf.curr, a + i - 1, s); i = i + 1 else break end
+			end
+		end)
 	end, "insert lines before"})
 
 	table.insert(state.cmds.range_local, {"^j$", function(m, a, b)
-		state.curr:undo_point()
-		local tmp = table.concat(state.curr.curr, "", a, b)
-		state.curr:replace(a, b, {tmp})
+		state.curr:change(function(buf)
+			local tmp = table.concat(buf.curr, "", a, b)
+			buf:replace(a, b, {tmp})
+		end)
 	end, "join lines"})
 
 	table.insert(state.cmds.range_local, {"^J(.)(.*)%1$", function(m, a, b)
-		state.curr:undo_point()
-		local new = {}
-		for _, l in ipairs(state.curr:extract(a, b)) do
-			local tmp = l:gsub(m[2], "\n")
-			for l_ in tmp:gmatch("[^\n]*") do table.insert(new, l_) end
-		end
-		state.curr:insert(a - 1, new)
+		state.curr:change(function(buf)
+			local new = {}
+			for _, l in ipairs(buf:extract(a, b)) do
+				local tmp = l:gsub(m[2], "\n")
+				for l_ in tmp:gmatch("[^\n]*") do table.insert(new, l_) end
+			end
+			buf:insert(a - 1, new)
+		end)
 	end, "split lines on pattern"})
 
+	table.insert(state.cmds.range_local, {"^m(.*)$", function(m, a, b)
+		state.curr:change(function(buf)
+			local dst = buf:addr(m[1], true)
+			if dst > b then dst = dst - (b - a + 1)
+			elseif dst > a then error("destination inside source range")
+			end
+
+			buf:insert(dst, buf:extract(a, b))
+		end)
+	end, "move lines"})
+
 	table.insert(state.cmds.line, {"^r +(!?)(.*)$", function(m, a)
-		state.curr:undo_point()
-		local h <close> = #m[1] > 0 and io.popen(m[2], "r") or assert(io.open(m[2], "r"))
-		local tmp = {}
-		for l in h:lines() do table.insert(tmp, l) end
-		state.curr:insert(a, tmp)
+		state.curr:change(function(buf)
+			local h <close> = #m[1] > 0 and io.popen(m[2], "r") or assert(io.open(m[2], "r"))
+			local tmp = {}
+			for l in h:lines() do table.insert(tmp, l) end
+			buf:insert(a, tmp)
+		end)
 	end, "append text from file / command after"})
 
 	table.insert(state.cmds.range_local, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
-		state.curr:undo_point()
-		for i, l in ipairs(state.curr.curr) do
-			if a <= i and i <= b then
-				if m[4]:find("g") then
-					state.curr.curr[i] = l:gsub(m[2], m[3])
-				elseif tonumber(m[4]) then
-					local pos = lib.find_nth(l, m[2], tonumber(m[4]))
-					if pos then state.curr.curr[i] = l:sub(1, pos - 1) .. l:sub(pos):gsub(m[2], m[3], 1) end
-				elseif m[4] == "" then
-					state.curr.curr[i] = l:gsub(m[2], m[3], 1)
-				else
-					error("could not parse flags: " .. m[4])
+		state.curr:change(function(buf)
+			for i, l in ipairs(buf.curr) do
+				if a <= i and i <= b then
+					if m[4]:find("g") then
+						buf.curr[i] = l:gsub(m[2], m[3])
+					elseif tonumber(m[4]) then
+						local pos = lib.find_nth(l, m[2], tonumber(m[4]))
+						if pos then buf.curr[i] = l:sub(1, pos - 1) .. l:sub(pos):gsub(m[2], m[3], 1) end
+					elseif m[4] == "" then
+						buf.curr[i] = l:gsub(m[2], m[3], 1)
+					else
+						error("could not parse flags: " .. m[4])
+					end
 				end
 			end
-		end
+		end)
 	end, "substitute text using Lua gsub"})
+
+	table.insert(state.cmds.range_local, {"^t(.*)$", function(m, a, b)
+		state.curr:change(function(buf)
+			local dst = buf:addr(m[1], true)
+			local tmp = {}
+			for i = a, b do table.insert(tmp, buf.curr[i]) end
+			buf:insert(dst, tmp)
+		end)
+	end, "copy (transfer) lines"})
 end
 
 function m.core_help(state)
@@ -154,12 +183,12 @@ function m.core_help(state)
 
 		print("File level commands")
 		f(state.cmds.file)
-
-		state.skip_print = true
 	end, "show help"})
 end
 
 function m.core_state(state)
+	table.insert(state.cmds.file, {"^$", function( ) state.curr:print() end, "print current selection"})
+
 	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load    (m[1])                             end, "open file"       })
 	table.insert(state.cmds.file, {"^f +(.+)$", function(m) state.curr:set_path(m[1]); state.curr.modified = true end, "set file name"   })
 	table.insert(state.cmds.file, {"^q$"      , function( ) state.curr:close   (    )                             end,       "close file"})
@@ -187,21 +216,22 @@ end
 function m.align(state)
 	table.insert(state.cmds.range_local, {"^:align *(%p)(.-)%1(%d*)$", function(m, a, b)
 		local n = tonumber(m[3]) or 1
-		state.curr:undo_point()
-		local max = 0
-		for i, l in ipairs(state.curr.curr) do
-			if a <= i and i <= b then
-				local bytes = lib.find_nth(l, m[2], n)
-				if bytes then max = math.max(max, utf8.len(l:sub(1, bytes - 1))) end
+		state.curr:change(function(buf)
+			local max = 0
+			for i, l in ipairs(buf.curr) do
+				if a <= i and i <= b then
+					local bytes = lib.find_nth(l, m[2], n)
+					if bytes then max = math.max(max, utf8.len(l:sub(1, bytes - 1))) end
+				end
 			end
-		end
-		print(max)
-		for i, l in ipairs(state.curr.curr) do
-			if a <= i and i <= b then
-				local bytes = lib.find_nth(l, m[2], n)
-				if bytes then state.curr.curr[i] = l:sub(1, bytes - 1) .. (" "):rep(max - utf8.len(l:sub(1, bytes - 1))) .. l:sub(bytes) end
+			print(max)
+			for i, l in ipairs(buf.curr) do
+				if a <= i and i <= b then
+					local bytes = lib.find_nth(l, m[2], n)
+					if bytes then buf.curr[i] = l:sub(1, bytes - 1) .. (" "):rep(max - utf8.len(l:sub(1, bytes - 1))) .. l:sub(bytes) end
+				end
 			end
-		end
+		end)
 	end, "align matched pattern by padding with spaces"})
 end
 
@@ -231,18 +261,20 @@ function m.clipboard(state)
 	end, "copy lines"})
 
 	table.insert(state.cmds.range_local, {"^X$", function(m, a, b)
-		state.curr:undo_point()
-		local h <close> = io.popen(copy_cmd, "w")
-		for i, l in ipairs(state.curr:extract(a, b)) do h:write(l, "\n") end
+		state.curr:change(function(buf)
+			local h <close> = io.popen(copy_cmd, "w")
+			for i, l in ipairs(buf:extract(a, b)) do h:write(l, "\n") end
+		end)
 	end, "cut lines"})
 
 	table.insert(state.cmds.line, {"^V$", function(m, a)
-		state.curr:undo_point()
-		local h <close> = io.popen(paste_cmd, "r")
-		local tmp = {}
-		for l in h:lines() do table.insert(tmp, l) end
-		paste_filter(tmp)
-		state.curr:insert(a, tmp)
+		state.curr:change(function(buf)
+			local h <close> = io.popen(paste_cmd, "r")
+			local tmp = {}
+			for l in h:lines() do table.insert(tmp, l) end
+			paste_filter(tmp)
+			buf:insert(a, tmp)
+		end)
 	end, "paste lines after"})
 end
 
@@ -265,14 +297,12 @@ function m.find(state)
 			if a <= i and i <= b and v:find(m[2]) then lines[i] = true end
 		end
 		state.curr:print(lines)
-		state.skip_print = true
 	end, "search for pattern"})
 end
 
 function m.lua_cmd(state)
 	table.insert(state.cmds.file, {"^:lua *(.*)$", function(m)
 		assert(load(m[1], "interactive", "t"))()
-		state.skip_print = true
 	end, "execute lua command"})
 end
 
@@ -296,21 +326,21 @@ function m.shell(state)
 	table.insert(state.cmds.file, {"^!(.+)$", function(m)
 		local ok, how, no = os.execute(cmdline(m[1]))
 		if not ok then print(how, no) end
-		state.skip_print = true
 	end, "execute shell command"})
 
 	table.insert(state.cmds.range_local, {"^|(.+)$", function(m, a, b)
-		state.curr:undo_point()
-		local tmp = {}
-		for i, l in ipairs(state.curr.curr) do
-			if a <= i and i <= b then table.insert(tmp, l) end
-		end
-		table.insert(tmp, "")
-		tmp = table.concat(tmp, "\n")
-		local ret = {}
-		for l in lib.pipe(cmdline(m[1]), tmp):gmatch("[^\n]*") do table.insert(ret, l) end
-		table.remove(ret)
-		state.curr:replace(a, b, ret)
+		state.curr:change(function(buf)
+			local tmp = {}
+			for i, l in ipairs(buf.curr) do
+				if a <= i and i <= b then table.insert(tmp, l) end
+			end
+			table.insert(tmp, "")
+			tmp = table.concat(tmp, "\n")
+			local ret = {}
+			for l in lib.pipe(cmdline(m[1]), tmp):gmatch("[^\n]*") do table.insert(ret, l) end
+			table.remove(ret)
+			buf:replace(a, b, ret)
+		end)
 	end, "pipe lines through shell command"})
 end
 
