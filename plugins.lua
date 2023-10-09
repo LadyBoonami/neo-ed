@@ -202,7 +202,10 @@ function m.core_state(state)
 	table.insert(state.cmds.file, {"^wq$"     , function( ) state.curr:save(    ); state.curr:close() end, "write changes to the current file, then close"})
 	table.insert(state.cmds.file, {"^wqq$"    , function( ) state.curr:save(    ); state:quit      () end, "write changes to the current file, then quit" })
 
-	table.insert(state.cmds.file, {"^#(%d+)$" , function(m) state.curr = assert(state.files[tonumber(m[1])], "no such file") end, "switch to open file"})
+	table.insert(state.cmds.file, {"^#(%d+)$" , function(m)
+		state.curr = assert(state.files[tonumber(m[1])], "no such file")
+		state.curr:print()
+	end, "switch to open file"})
 end
 
 function m.core(state)
