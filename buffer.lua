@@ -27,9 +27,9 @@ end
 
 function mt.__index:all()
 	local ret = {}
-	for _, l in ipairs(self.prev) do table.insert(ret, l) end
-	for _, l in ipairs(self.curr) do table.insert(ret, l) end
-	for _, l in ipairs(self.next) do table.insert(ret, l) end
+	for _, l in ipairs(self.prev) do table.insert(ret, lib.dup(l)) end
+	for _, l in ipairs(self.curr) do table.insert(ret, lib.dup(l)) end
+	for _, l in ipairs(self.next) do table.insert(ret, lib.dup(l)) end
 	return ret
 end
 
@@ -59,8 +59,8 @@ function mt.__index:diff()
 	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
 	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
 	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
-	for _, l in ipairs(self.history[#self.history].curr) do posix.unistd.write(ha, l); posix.unistd.write(ha, "\n") end
-	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l); posix.unistd.write(hb, "\n") end
+	for _, l in ipairs(self.history[#self.history].curr) do posix.unistd.write(ha, l.text); posix.unistd.write(ha, "\n") end
+	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end
 	posix.unistd.close(ha)
 	posix.unistd.close(hb)
 	os.execute("diff -u --color=always " .. lib.shellesc(pa) .. " " .. lib.shellesc(pb) .. " | tail -n +3")
@@ -93,14 +93,14 @@ function mt.__index:insert(a, tbl)
 end
 
 function mt.__index:print(lines)
-	lib.hook(self.state.hooks.print_pre, self)
-
 	if not lines then
 		lines = {}
 		for i = 1, #self.curr do lines[#self.prev + i] = true end
 	end
 
 	local all = self:all()
+
+	lib.hook(self.state.hooks.print_pre, self, all, lines)
 
 	local function go(f)
 		local ok, r = xpcall(f, debug.traceback, all, self)
@@ -123,10 +123,10 @@ function mt.__index:print(lines)
 
 	local w = #tostring(#all)
 	for i, l in ipairs(all) do
-		if lines[i] then io.stdout:write(("%" .. tostring(w) .. "d│%s\n"):format(i, l)) end
+		if lines[i] then io.stdout:write(("%" .. tostring(w) .. "d│%s\n"):format(i, l.text)) end
 	end
 
-	lib.hook(self.state.hooks.print_post, self)
+	lib.hook(self.state.hooks.print_post, self, all, lines)
 end
 
 function mt.__index:replace(a, b, tbl)
@@ -140,15 +140,15 @@ function mt.__index:save(path)
 	lib.hook(self.state.hooks.save_pre, self)
 
 	if self.conf.trim then
-		for i, l in ipairs(self.prev) do self.prev[i] = l:match("^(.-)%s*$") end
-		for i, l in ipairs(self.curr) do self.curr[i] = l:match("^(.-)%s*$") end
-		for i, l in ipairs(self.next) do self.next[i] = l:match("^(.-)%s*$") end
+		for i, l in ipairs(self.prev) do self.prev[i].text = l.text:match("^(.-)%s*$") end
+		for i, l in ipairs(self.curr) do self.curr[i].text = l.text:match("^(.-)%s*$") end
+		for i, l in ipairs(self.next) do self.next[i].text = l.text:match("^(.-)%s*$") end
 	end
 
 	local h = io.open(self.path, "w")
 	local all = self:all()
 	for _, l in ipairs(all) do
-		h:write(l)
+		h:write(l.text)
 		if i ~= #all or self.conf.end_nl then h:write(self.conf.crlf and "\r\n" or "\n") end
 	end
 	h:close()
@@ -179,12 +179,16 @@ end
 
 function mt.__index:undo_point()
 	local state = {
-		prev = {table.unpack(self.prev)},
-		curr = {table.unpack(self.curr)},
-		next = {table.unpack(self.next)},
+		prev = {},
+		curr = {},
+		next = {},
 		modified = self.modified,
 	}
-	lib.hook(self.state.hooks.undo_point, self)
+	for i, v in ipairs(self.prev) do state.prev[i] = lib.dup(v) end
+	for i, v in ipairs(self.curr) do state.curr[i] = lib.dup(v) end
+	for i, v in ipairs(self.next) do state.next[i] = lib.dup(v) end
+
+	lib.hook(self.state.hooks.undo_point, self, state)
 	table.insert(self.history, state)
 	self.modified = true
 end
@@ -202,7 +206,7 @@ return function(state, path)
 
 		local h <close> = io.open(path, "r")
 		if h then
-			for l in h:lines() do table.insert(ret.curr, l) end
+			for l in h:lines() do table.insert(ret.curr, {text = l}) end
 		end
 	end
 

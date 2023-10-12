@@ -1,6 +1,5 @@
 # Missing POSIX ed commands
 
-- Marks?
 - Print commands `l`, `n`, `p`?
 
 # Other core functionality

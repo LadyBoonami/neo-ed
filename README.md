@@ -49,6 +49,7 @@ Each address may be specified using exactly one line address, followed by any nu
 - `.` stands for the last line of the current selection.
 - `$` stands for the last line in the file.
 - A lua pattern, delimited by a single punctuation character (usually `/`), stands for the first line in the file that matches that pattern.
+- `'` followed by a single lowercase letter stands for the first line marked with that letter.
 
 ### Address modifiers
 
@@ -58,6 +59,8 @@ Each address may be specified using exactly one line address, followed by any nu
 - A number preceded by a `-` sign subtracts the given number of lines from the address.
 - A lua pattern delimited by `/` characters selects the next line afterwards that matches that pattern.
 - A lua pattern delimited by `\` characters selects the last line before that matches that pattern.
+- `'` followed by a single lowercase letter selects the next line afterwards that is marked with that letter.
+- A backtick followed by a single lowerase letter selects the last line before that is marked with that letter.
 
 ### Ranges
 
@@ -98,6 +101,8 @@ For a complete overview of commands, including those installed by plugins, use t
 - `i`: start insert lines before the selected line.
   `Ctrl+D` to exit.
   The command history (press Up) contains the indentation prefix of the next line.
+- `k` removes the mark on the selected line.
+- `k<x>` with some lowercase letter `<x>` marks the selected line with that letter.
 - `r <filename>`: insert contents of file after the selected line.
 - `r !<command>`: insert output of command after the selected line.
 

@@ -16,6 +16,12 @@ rl.set_complete_function(function(text, from, to)
 	return {text:sub(from, to) .. "\t"}
 end)
 
+function m.dup(t)
+	local ret = {}
+	for k, v in pairs(t) do ret[k] = v end
+	return ret
+end
+
 function m.find_nth(s, pat, n)
 	local ret = 0
 	for i = 1, n do
