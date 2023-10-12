@@ -120,20 +120,19 @@ function mt.__index:main()
 
 		if not ok then
 			self.msg = "failed to read input: " .. cmd
-		elseif not cmd then self:quit()
+		elseif not cmd then
+			local ok, status = xpcall(self.quit, debug.traceback, self)
+			if not ok then self.msg = "command failed: " .. status end
 		else
 			table.insert(self.history, cmd)
 			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
-			if not ok then
-				self.msg = "command failed: " .. status
-			end
+			if not ok then self.msg = "command failed: " .. status end
 		end
 	end
 end
 
 function mt.__index:quit(force)
-	for _, v in ipairs(self.files) do v:close(force) end
-	os.exit(0)
+	while self.files[1] do self.files[1]:close(force) end
 end
 
 return function(files)
