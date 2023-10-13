@@ -97,7 +97,7 @@ function m.core_editing(state)
 		state.curr:change(function(buf)
 			local tmp = {}
 			for i = a, b do table.insert(tmp, buf.curr[i].text) end
-			buf:replace(a, b, {(table.concat(tmp, ""))})
+			buf:replace(a, b, {{text = table.concat(tmp, "")}})
 		end)
 	end, "join lines"})
 
@@ -155,7 +155,7 @@ function m.core_editing(state)
 		state.curr:change(function(buf)
 			local dst = buf:addr(m[1], true)
 			local tmp = {}
-			for i = a, b do table.insert(tmp, buf.curr[i]) end
+			for i = a, b do table.insert(tmp, lib.dup(buf.curr[i])) end
 			buf:insert(dst, tmp)
 		end)
 	end, "copy (transfer) lines"})

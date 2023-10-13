@@ -57,8 +57,8 @@ end
 function mt.__index:diff()
 	local pa = (os.getenv("HOME") or "/tmp") .. "/.ned-old"
 	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
-	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
-	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 5*8*8)
+	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
+	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
 	for _, l in ipairs(self.history[#self.history].curr) do posix.unistd.write(ha, l.text); posix.unistd.write(ha, "\n") end
 	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end
 	posix.unistd.close(ha)
