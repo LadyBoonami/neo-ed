@@ -163,22 +163,24 @@ end
 
 function m.core_help(state)
 	table.insert(state.cmds.file, {"^h$", function()
-		local function f(t)
-			for i, v in ipairs(t) do print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub("%(%.%*%)%$$", ""), v[3])) end
+		local function f(t, addr)
+			for i, v in ipairs(t) do print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub(addr and "%(%.%*%)%$$" or "%$$", ""), v[3])) end
 		end
 
 		print("Line addressing:")
-		f(state.cmds.addr.prim)
+		f(state.cmds.addr.prim, true)
 
 		print("Address modifiers:")
-		f(state.cmds.addr.cont)
+		f(state.cmds.addr.cont, true)
 
 		print("Single line commands (prefixed by a single address, defaults to end of selection)")
 		f(state.cmds.line)
 
 		print("Local range commands (prefixed by up to two addresses, default to the current selection)")
-		f(state.cmds.range_local)
-		f(state.cmds.range_local_ro)
+		local t = {}
+		for _, v in ipairs(state.cmds.range_local   ) do table.insert(t, v) end
+		for _, v in ipairs(state.cmds.range_local_ro) do table.insert(t, v) end
+		f(t)
 
 		print("Global range commands (prefixed by up to two addresses, defaults to the entire file)")
 		f(state.cmds.range_global)
