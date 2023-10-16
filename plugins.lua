@@ -188,6 +188,38 @@ function m.core_help(state)
 		print("File level commands")
 		f(state.cmds.file)
 	end, "show help"})
+
+	table.insert(state.cmds.file, {"^hp$", function()
+		print "Lua pattern quick reference"
+		print ""
+		print "Character classes (uppercase character for inverted set):"
+		print "  x where x not in ^$()%.[]*+-? : x itself"
+		print "  %x where x not alphanumeric: character x (escaped)"
+		print "  . : all characters"
+		print "  %a: all letters"
+		print "  %c: control characters"
+		print "  %d: digits"
+		print "  %g: printable characters except space"
+		print "  %l: lowercase letters"
+		print "  %p: punctuation characters"
+		print "  %s: space characters"
+		print "  %u: uppercase letters"
+		print "  %w: alphanumeric characters"
+		print "  %x: hexadecimal digits"
+		print "  [set..] : all characters in that set"
+		print "  [^set..]: all characters not in that set"
+		print ""
+		print "Patterns:"
+		print "  set*: zero or more times"
+		print "  set+: one or more times"
+		print "  set-: zero or more times, shortest possible match"
+		print "  set?: zero or one time"
+		print "  %n: capture #n (1-9)"
+		print "  %bxy: string that starts with x, ends with y, and contains an equal amount of x and y"
+		print "  %f[set..]: empty string between a character not in the set and a character in the set, beginning and end are \\0"
+		print ""
+		print "For more details, see https://www.lua.org/manual/5.4/manual.html#6.4.1"
+	end, "show Lua pattern help"})
 end
 
 function m.core_marks(state)
