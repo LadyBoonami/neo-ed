@@ -178,6 +178,7 @@ function m.core_help(state)
 
 		print("Local range commands (prefixed by up to two addresses, default to the current selection)")
 		f(state.cmds.range_local)
+		f(state.cmds.range_local_ro)
 
 		print("Global range commands (prefixed by up to two addresses, defaults to the entire file)")
 		f(state.cmds.range_global)
@@ -225,20 +226,20 @@ function m.core_marks(state)
 end
 
 function m.core_print(state)
-	table.insert(state.cmds.range_global, {"^$", function(m, a, b) state:cmd(tostring(a) .. "," .. tostring(b) .. "l") end, "print code listing (alias for `l` command)"})
+	table.insert(state.cmds.range_local_ro, {"^$", function(m, a, b) state:cmd(tostring(a) .. "," .. tostring(b) .. "l") end, "print code listing (alias for `l` command)"})
 
-	table.insert(state.cmds.range_global, {"^l$", function(m, a, b)
+	table.insert(state.cmds.range_local_ro, {"^l$", function(m, a, b)
 		local lines = {}
 		for i = a, b do lines[i] = true end
 		state.curr:print(lines)
 	end, "print code listing (use the print pipeline)"})
 
-	table.insert(state.cmds.range_global, {"^n$", function(m, a, b)
+	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b)
 		local tmp = state.curr:all()
 		for i = a, b do print(i, tmp[i].text) end
 	end, "print lines prefixed by their line number"})
 
-	table.insert(state.cmds.range_global, {"^p$", function(m, a, b)
+	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b)
 		local tmp = state.curr:all()
 		for i = a, b do print(tmp[i].text) end
 	end, "print lines raw (without any processing such as syntax highlighting etc.)"})

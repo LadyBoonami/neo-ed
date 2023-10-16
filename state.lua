@@ -45,6 +45,7 @@ function mt.__index:cmd(s)
 
 		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, b) then return end
 		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, b) then return end
+		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, b) then return end
 
 		error("could not parse: " .. s)
 	end
@@ -65,6 +66,7 @@ function mt.__index:cmd(s)
 
 		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, a) then return end
 		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, a) then return end
+		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, a) then return end
 		if not lib.match(s, self.cmds.line, function() return true end, local1, a) then return end
 
 		error("could not parse: " .. s)
@@ -79,6 +81,7 @@ function mt.__index:cmd(s)
 		if not lib.match(s, self.cmds.file, function() return true end, file0) then return end
 		if not lib.match(s, self.cmds.range_global, function() return true end, global2, 1, #self.curr.prev + #self.curr.curr + #self.curr.next) then return end
 		if not lib.match(s, self.cmds.range_local, function() return true end, local2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
+		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
 		if not lib.match(s, self.cmds.line, function() return true end, local1, #self.curr.prev + #self.curr.curr) then return end
 
 		error("could not parse: " .. s)
@@ -146,6 +149,7 @@ return function(files)
 		line = {},
 		range_local = {},
 		range_global = {},
+		range_local_ro = {},
 		file = {},
 	}
 
