@@ -1,7 +1,3 @@
-# Missing POSIX ed commands
-
-- Print commands `l`, `n`, `p`?
-
 # Other core functionality
 
 - replace tabs with spaces
@@ -13,3 +9,4 @@
 - language-specific
 - trim
 - autosave
+- text encoding

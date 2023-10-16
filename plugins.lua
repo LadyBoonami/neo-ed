@@ -224,9 +224,27 @@ function m.core_marks(state)
 	end)
 end
 
-function m.core_state(state)
-	table.insert(state.cmds.file, {"^$", function( ) state.curr:print() end, "print current selection"})
+function m.core_print(state)
+	table.insert(state.cmds.range_global, {"^$", function(m, a, b) state:cmd(tostring(a) .. "," .. tostring(b) .. "l") end, "print code listing (alias for `l` command)"})
 
+	table.insert(state.cmds.range_global, {"^l$", function(m, a, b)
+		local lines = {}
+		for i = a, b do lines[i] = true end
+		state.curr:print(lines)
+	end, "print code listing (use the print pipeline)"})
+
+	table.insert(state.cmds.range_global, {"^n$", function(m, a, b)
+		local tmp = state.curr:all()
+		for i = a, b do print(i, tmp[i].text) end
+	end, "print lines prefixed by their line number"})
+
+	table.insert(state.cmds.range_global, {"^p$", function(m, a, b)
+		local tmp = state.curr:all()
+		for i = a, b do print(tmp[i].text) end
+	end, "print lines raw (without any processing such as syntax highlighting etc.)"})
+end
+
+function m.core_state(state)
 	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load    (m[1])                             end, "open file"       })
 	table.insert(state.cmds.file, {"^f +(.+)$", function(m) state.curr:set_path(m[1]); state.curr.modified = true end, "set file name"   })
 	table.insert(state.cmds.file, {"^q$"      , function( ) state.curr:close   (    )                             end,       "close file"})
@@ -252,6 +270,7 @@ function m.core(state)
 	m.core_editing  (state)
 	m.core_help     (state)
 	m.core_marks    (state)
+	m.core_print    (state)
 	m.core_state    (state)
 end
 

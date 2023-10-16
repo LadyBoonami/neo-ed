@@ -126,4 +126,8 @@ For a complete overview of commands, including those installed by plugins, use t
 
 ### Global Range
 
+- (empty command): alias for `l`
 - `f`: select ("focus") the specified lines
+- `l`: print code listing using formatting pipeline
+- `n`: print code prefixed with line numbers
+- `p`: print code raw
