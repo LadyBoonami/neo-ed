@@ -444,6 +444,21 @@ function m.shell(state)
 	end, "pipe lines through shell command"})
 end
 
+function m.ssh_url(state)
+	table.insert(state.protocols, {"^ssh://([^:/]+):?(%d*)(/.*)$", {
+		read = function(m)
+			local p = m[2] == "" and "22" or m[2]
+			local h <close> = io.popen("ssh -p " .. p .. " " .. lib.shellesc(m[1]) .. " cat " .. lib.shellesc(m[3]), "r")
+			return h:read("a")
+		end,
+		write = function(m, s)
+			local p = m[2] == "" and "22" or m[2]
+			local h <close> = io.popen("ssh -p " .. p .. " " .. lib.shellesc(m[1]) .. " tee " .. lib.shellesc(m[3]) .. " >/dev/null", "w")
+			h:write(s)
+		end,
+	}})
+end
+
 function m.tabs_filter(state)
 	table.insert(state.cmds.file, {"^:tabs +(%d+)$"  , function(m) state.curr.conf.tabs   = tonumber(m[1]) end, "set tab width"  })
 	table.insert(state.cmds.file, {"^:indent +(%d+)$", function(m) state.curr.conf.indent = tonumber(m[1]) end, "set indentation"})
@@ -461,19 +476,25 @@ function m.tabs_filter(state)
 		local function spcs(wsp, t, i)
 			t = t or {}
 			i = i or 0
-			if wsp == "" then return table.concat(t) end
+			if #wsp < b.conf.indent then
+				table.insert(t, wsp)
+				return table.concat(t)
+			end
 			table.insert(t, color[i % 6 + 1]("┆"))
 			table.insert(t, wsp:sub(2, b.conf.indent))
 			return spcs(wsp:sub(b.conf.indent + 1), t, i + 1)
 		end
 
 		local tab = (" "):rep(b.conf.tabs - 1)
-		local tab_ = ("┄"):rep(b.conf.tabs - 1) .. "┤"
+		local tab_ = "│" .. (" "):rep(b.conf.tabs - 1)
 		local function tabs(wsp, t, i)
 			t = t or {}
 			i = i or 0
 			if wsp == "" then return table.concat(t) end
-			if wsp:find("^ ") then return spcs(wsp, t, i) end
+			if wsp:find("^ ") then
+				table.insert(t, wsp)
+				return table.concat(t)
+			end
 			table.insert(t, color[i % 6 + 1]("│"))
 			table.insert(t, tab)
 			return tabs(wsp:sub(2), t, i + 1)
@@ -483,7 +504,7 @@ function m.tabs_filter(state)
 			lines[i].text = l.text
 				:gsub("^(\x1b[^m]-m)([\t ]+)" , function(pre, wsp) return tabs(wsp) end)
 				:gsub(            "^([\t ]+)" , function(     wsp) return spcs(wsp) end)
-				:gsub("\t", "\x1b[34m" .. tab_ .. "\x1b[0m")
+				:gsub("\t", tab_)
 		end
 		return lines
 	end)
@@ -498,6 +519,7 @@ function m.def(state)
 	m.find       (state)
 	m.lua_cmd    (state)
 	m.reload     (state)
+	m.ssh_url    (state)
 	m.shell      (state)
 	m.tabs_filter(state)
 end

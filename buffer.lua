@@ -145,13 +145,16 @@ function mt.__index:save(path)
 		for i, l in ipairs(self.next) do self.next[i].text = l.text:match("^(.-)%s*$") end
 	end
 
-	local h = io.open(self.path, "w")
-	local all = self:all()
-	for _, l in ipairs(all) do
-		h:write(l.text)
-		if i ~= #all or self.conf.end_nl then h:write(self.conf.crlf and "\r\n" or "\n") end
-	end
-	h:close()
+	local s = {}
+	for _, v in ipairs(self:all()) do table.insert(s, v.text) end
+	if self.conf.end_nl then table.insert(s, "") end
+	s = table.concat(s, self.conf.crlf and "\r\n" or "\n")
+
+	lib.match(self.path, self.state.protocols,
+		function(p, s) local h <close> = io.open(p, "w"); h:write(s) end,
+		function(t, p, s) t.write(p, s) end,
+		s
+	)
 
 	self.modified = false
 	for _, v in ipairs(self.history) do v.modified = true end
@@ -204,10 +207,13 @@ return function(state, path)
 	if path then
 		ret:set_path(path)
 
-		local h <close> = io.open(path, "r")
-		if h then
-			for l in h:lines() do table.insert(ret.curr, {text = l}) end
-		end
+		local s = lib.match(path, state.protocols,
+			function(p) local h <close> = io.open(p, "r"); return h:read("a") end,
+			function(t, p) return t.read(p) end
+		)
+
+		for l in s:gmatch("[^\n]*") do table.insert(ret.curr, {text = l}) end
+		if ret.curr[#ret.curr].text == "" then table.remove(ret.curr) end
 	end
 
 	ret.history  = {}

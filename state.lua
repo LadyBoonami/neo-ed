@@ -167,6 +167,8 @@ return function(files)
 		undo_point = {},
 	}
 
+	ret.protocols = {}
+
 	ret.print = {
 		pre       = {},
 		highlight = function(lines) return lines end,

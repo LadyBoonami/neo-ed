@@ -59,7 +59,7 @@ function m.match(s, tbl, def, wrap, ...)
 		local r = {s:match(v[1])}
 		if r[1] then return wrap(v[2], r, ...) end
 	end
-	return def(s)
+	return def(s, ...)
 end
 
 function m.patesc(s)
