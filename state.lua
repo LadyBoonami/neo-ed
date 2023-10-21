@@ -127,7 +127,7 @@ function mt.__index:main()
 			local ok, status = xpcall(self.quit, debug.traceback, self)
 			if not ok then self.msg = "command failed: " .. status end
 		else
-			table.insert(self.history, cmd)
+			if cmd ~= "" then table.insert(self.history, cmd) end
 			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
 			if not ok then self.msg = "command failed: " .. status end
 		end
