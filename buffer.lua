@@ -55,6 +55,10 @@ function mt.__index:close(force)
 end
 
 function mt.__index:diff()
+	local cmd = os.execute("which git >/dev/null 2>&1")
+		and "git diff --no-index --word-diff=color %s %s | tail -n +5"
+		or  "diff -u --color=always %s %s | tail -n +3"
+
 	local pa = (os.getenv("HOME") or "/tmp") .. "/.ned-old"
 	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
 	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
@@ -63,7 +67,9 @@ function mt.__index:diff()
 	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end
 	posix.unistd.close(ha)
 	posix.unistd.close(hb)
-	os.execute("diff -u --color=always " .. lib.shellesc(pa) .. " " .. lib.shellesc(pb) .. " | tail -n +3")
+
+	os.execute((cmd):format(lib.shellesc(pa), lib.shellesc(pb)))
+
 	posix.unistd.unlink(pa)
 	posix.unistd.unlink(pb)
 end
