@@ -56,8 +56,8 @@ end
 
 function mt.__index:diff()
 	local cmd = os.execute("which git >/dev/null 2>&1")
-		and "git diff --no-index --word-diff=color %s %s | tail -n +5"
-		or  "diff -u --color=always %s %s | tail -n +3"
+		and "git diff --no-index --color %s %s | tail -n +5"
+		or  "diff -u %s %s | tail -n +3"
 
 	local pa = (os.getenv("HOME") or "/tmp") .. "/.ned-old"
 	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
