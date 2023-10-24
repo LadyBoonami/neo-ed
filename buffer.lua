@@ -94,7 +94,6 @@ function mt.__index:focus(first, last)
 end
 
 function mt.__index:insert(a, tbl)
-	print("insert", a, #tbl)
 	for i, l in ipairs(tbl) do table.insert(self.curr, a + i, l) end
 end
 
