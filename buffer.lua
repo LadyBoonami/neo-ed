@@ -213,7 +213,7 @@ return function(state, path)
 		ret:set_path(path)
 
 		local s = lib.match(path, state.protocols,
-			function(p) local h <close> = io.open(p, "r"); return h:read("a") end,
+			function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
 			function(t, p) return t.read(p) end
 		)
 
