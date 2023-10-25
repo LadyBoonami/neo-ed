@@ -153,7 +153,8 @@ function mt.__index:save(path)
 	local s = {}
 	for _, v in ipairs(self:all()) do table.insert(s, v.text) end
 	if self.conf.end_nl then table.insert(s, "") end
-	s = table.concat(s, self.conf.crlf and "\r\n" or "\n")
+	s = table.concat(s, "\n")
+	for i = #self.state.filters.write, 1, -1 do s = self.state.filters.write[i](s, self) end
 
 	lib.match(self.path, self.state.protocols,
 		function(p, s) local h <close> = io.open(p, "w"); h:write(s) end,
@@ -209,22 +210,11 @@ return function(state, path)
 
 	ret.state = state
 
-	if path then
-		ret:set_path(path)
-
-		local s = lib.match(path, state.protocols,
-			function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
-			function(t, p) return t.read(p) end
-		)
-
-		for l in s:gmatch("[^\n]*") do table.insert(ret.curr, {text = l}) end
-		if ret.curr[#ret.curr].text == "" then table.remove(ret.curr) end
-	end
-
 	ret.history  = {}
 	ret.modified = false
 
 	ret.conf = {
+		charset = "utf-8",
 		crlf    = false,
 		end_nl  = true ,
 		indent  = 4    ,
@@ -234,7 +224,22 @@ return function(state, path)
 	}
 	ret.conf.ext = {}
 
-	lib.hook(ret.state.hooks.load, ret)
+	if path then ret:set_path(path) end
+
+	lib.hook(ret.state.hooks.load_pre, ret)
+
+	if path then
+		local s = lib.match(path, state.protocols,
+			function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
+			function(t, p) return t.read(p) end
+		)
+
+		for _, f in ipairs(ret.state.filters.read) do s = f(s, ret) end
+		for l in s:gmatch("[^\n]*") do table.insert(ret.curr, {text = l}) end
+		if ret.curr[#ret.curr].text == "" then table.remove(ret.curr) end
+	end
+
+	lib.hook(ret.state.hooks.load_post, ret)
 
 	return ret
 end

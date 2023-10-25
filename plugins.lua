@@ -335,6 +335,25 @@ function m.align(state)
 	end, "align matched pattern by padding with spaces"})
 end
 
+function m.charset(state)
+	local encodings = {
+		["latin1"  ] = "ISO8859_1",
+		["utf-8"   ] = "UTF-8",
+		["utf-16be"] = "UTF-16BE",
+		["utf-16le"] = "UTF-16LE",
+	}
+
+	table.insert(state.filters.read, function(s, b)
+		return lib.pipe("iconv -f " .. assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
+	end)
+
+	table.insert(state.filters.write, function(s, b)
+		return lib.pipe("iconv -t " .. assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
+	end)
+
+	table.insert(state.cmds.file, {"^:charset *(.*)$", function(m) state.curr.conf.charset = m[1] end, "Set charset"})
+end
+
 function m.clipboard(state)
 	local copy_cmd, paste_cmd, paste_filter
 
@@ -380,6 +399,17 @@ end
 
 function m.config_file(state)
 	table.insert(state.cmds.file, {"^:config$", function() state:load(state.config_file) end, "open config file"})
+end
+
+function m.eol(state)
+	table.insert(state.filters.read, function(s) return s:gsub("\r", "") end)
+
+	table.insert(state.filters.write, function(s, b)
+		if not b.conf.crlf then return s end
+		return s:gsub("\n", "\r\n")
+	end)
+
+	table.insert(state.cmds.file, {"^:crlf ([01])$", function(m) state.curr.conf.crlf = m[1] == "1" end, "Set CRLF line breaks"})
 end
 
 function m.eol_filter(state)
@@ -513,8 +543,10 @@ end
 function m.def(state)
 	m.core       (state)
 	m.align      (state)
+	m.charset    (state)
 	m.clipboard  (state)
 	m.config_file(state)
+	m.eol        (state)
 	m.eol_filter (state)
 	m.find       (state)
 	m.lua_cmd    (state)
@@ -531,7 +563,7 @@ function m.autocmd(state)
 end
 
 function m.editorconfig(state)
-	table.insert(state.hooks.load, function(b)
+	table.insert(state.hooks.load_pre, function(b)
 		if b.path then
 			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
 			local conf = {}
@@ -543,7 +575,8 @@ function m.editorconfig(state)
 			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
 			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
 			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
-			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+			if conf.                                                                                                                                                                         end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+			if conf.charset                  then b.conf.charset = conf.charset                                                                                                              end
 			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
 
 			for k, v in pairs(conf) do
@@ -602,7 +635,7 @@ function m.pygmentize_mode_detect(state)
 		curr.conf.ext.mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
 	end
 
-	table.insert(state.hooks.load, function(curr)
+	table.insert(state.hooks.load_post, function(curr)
 		if curr.path and not curr.conf.ext.mode then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
 			curr.conf.ext.mode = h:read("l")
