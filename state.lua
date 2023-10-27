@@ -104,13 +104,14 @@ function mt.__index:main()
 		print()
 		local w = #tostring(#self.files)
 		for i, f in ipairs(self.files) do
-			print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[32m%s\x1b[0m, \x1b[34m%d\x1b[0m lines%s"):format(
+			print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[32m%s\x1b[0m encoding%s, \x1b[34m%d\x1b[0m lines%s"):format(
 				i == self.curr.id and "[" or " ",
 				i,
 				i == self.curr.id and "]" or " ",
 				f.path,
 				f.conf.ext.mode,
 				f.conf.charset,
+				f.conf.crlf and " (DOS line endings)" or "",
 				#f.prev + #f.curr + #f.next,
 				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 			))
