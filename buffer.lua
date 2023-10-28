@@ -82,7 +82,9 @@ end
 
 function mt.__index:extract(a, b)
 	local ret = {}
-	for i = b, a, -1 do ret[i - a + 1] = table.remove(self.curr, i) end
+	table.move(self.curr, a, b, 1, ret)
+	table.move(self.curr, b+1, #self.curr, a)
+	for i = 1, b - a + 1 do table.remove(self.curr) end
 	return ret
 end
 
@@ -100,7 +102,8 @@ function mt.__index:focus(first, last)
 end
 
 function mt.__index:insert(a, tbl)
-	for i, l in ipairs(tbl) do table.insert(self.curr, a + i, l) end
+	table.move(self.curr, a, #self.curr, a + #tbl)
+	for i, l in ipairs(tbl) do self.curr[a + i - 1] = l end
 end
 
 function mt.__index:length()
