@@ -3,41 +3,35 @@ local m = {}
 local lib = require "neo-ed.lib"
 
 function m.core_addr_line(state)
-	table.insert(state.cmds.addr.prim, {"^(%d+)(.*)$"  , function(m      ) return tonumber(m[1]), m[2]                                         end, "line number"            })
-	table.insert(state.cmds.addr.prim, {"^%^(.*)$"     , function(m      ) return #state.curr.prev + 1, m[1]                                   end, "first line of selection"})
-	table.insert(state.cmds.addr.prim, {"^%.(.*)$"     , function(m      ) return #state.curr.prev + #state.curr.curr, m[1]                    end, "last line of selection" })
-	table.insert(state.cmds.addr.prim, {"^%$(.*)$"     , function(m      ) return #state.curr.prev + #state.curr.curr + #state.curr.next, m[1] end, "last line"              })
-	table.insert(state.cmds.addr.cont, {"^%+(%d*)(.*)$", function(m, base) return base + (m[1] == "" and 1 or tonumber(m[1])), m[2]            end, "add lines"              })
-	table.insert(state.cmds.addr.cont, {"^%-(%d*)(.*)$", function(m, base) return base - (m[1] == "" and 1 or tonumber(m[1])), m[2]            end, "subtract lines"         })
+	table.insert(state.cmds.addr.prim, {"^(%d+)(.*)$"  , function(m      ) return tonumber(m[1])                             , m[2] end, "line number"            })
+	table.insert(state.cmds.addr.prim, {"^%^(.*)$"     , function(m      ) return state.curr:curr_first()                    , m[1] end, "first line of selection"})
+	table.insert(state.cmds.addr.prim, {"^%.(.*)$"     , function(m      ) return state.curr:curr_last()                     , m[1] end, "last line of selection" })
+	table.insert(state.cmds.addr.prim, {"^%$(.*)$"     , function(m      ) return state.curr:length()                        , m[1] end, "last line"              })
+	table.insert(state.cmds.addr.cont, {"^%+(%d*)(.*)$", function(m, base) return base + (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "add lines"              })
+	table.insert(state.cmds.addr.cont, {"^%-(%d*)(.*)$", function(m, base) return base - (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "subtract lines"         })
 end
 
 function m.core_addr_pat(state)
 	table.insert(state.cmds.addr.prim, {"^/(.-)/(.*)$", function(m)
-		local tmp = state.curr:all()
-		for i, l in ipairs(tmp) do
-			if l.text:find(m[1]) then return i, m[2] end
-		end
-		error("pattern not found: /" .. m[1] .. "/")
+		return (
+			state.curr:map(function(i, l) if l.text:find(m[1]) then return i end end)
+			or error("pattern not found: /" .. m[1] .. "/")
+		), m[2]
 	end, "first matching line"})
 
 	table.insert(state.cmds.addr.cont, {"^/(.-)/(.*)$", function(m, base)
-		local tmp = state.curr:all()
-		for i = base + 1, #tmp do
-			if tmp[i].text:find(m[1]) then return i, m[2] end
-		end
-		error("pattern not found: /" .. m[1] .. "/")
+		return (
+			state.curr:map(function(i, l) if i > base and l.text:find(m[1]) then return i end end)
+			or error("pattern not found: " .. tostring(base) .. "/" .. m[1] .. "/")
+		), m[2]
 	end, "first matching line after"})
 
 	table.insert(state.cmds.addr.cont, {"^\\(.-)\\(.*)$", function(m, base)
-		local tmp = state.curr:all()
-		for i = base - 1, 1, -1 do
-			if tmp[i].text:find(m[1]) then return i, m[2] end
-		end
-		error("pattern not found: \\" .. m[1] .. "\\")
+		return (
+			state.curr:rmap(function(i, l) if i < base and l.text:find(m[1]) then return i end end)
+			or error("pattern not found: " .. tostring(base) .. "\\" .. m[1] .. "\\")
+		), m[2]
 	end, "last matching line before"})
-
-	-- TODO:
-		-- pass pattern information
 end
 
 function m.core_editing(state)
@@ -70,6 +64,7 @@ function m.core_editing(state)
 		state.curr:print()
 	end, "select (\"focus\") lines"})
 
+	-- TODO: do this in order
 	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			for i = b, a, -1 do
@@ -228,27 +223,24 @@ function m.core_marks(state)
 	end, "mark line"})
 
 	table.insert(state.cmds.addr.prim, {"^'(%l)(.*)$", function(m)
-		local tmp = state.curr:all()
-		for i, l in ipairs(tmp) do
-			if l.mark == m[1] then return i, m[2] end
-		end
-		error("mark not found: '" .. m[1])
+		return (
+			state.curr:map(function(i, l) if l.mark == m[1] then return i end end)
+			or error("mark not found: '" .. m[1])
+		), m[2]
 	end, "first line with mark"})
 
 	table.insert(state.cmds.addr.cont, {"^'(%l)(.*)$", function(m, base)
-		local tmp = state.curr:all()
-		for i = base + 1, #tmp do
-			if tmp[i].mark == m[1] then return i, m[2] end
-		end
-		error("mark not found: '" .. m[1])
+		return (
+			state.curr:map(function(i, l) if i > base and l.mark == m[1] then return i end end)
+			or error("mark not found: " .. tostring(base) .. "'" .. m[1])
+		), m[2]
 	end, "first line with mark after"})
 
 	table.insert(state.cmds.addr.cont, {"^`(%l)(.*)$", function(m, base)
-		local tmp = state.curr:all()
-		for i = base - 1, 1, -1 do
-			if tmp[i].mark == m[1] then return i, m[2] end
-		end
-		error("mark not found: '" .. m[1])
+		return (
+			state.curr:rmap(function(i, l) if i < base and l.mark == m[1] then return i end end)
+			or error("mark not found: " .. tostring(base) .. "`" .. m[1])
+		), m[2]
 	end, "last line with mark before"})
 
 	table.insert(state.print.post, function(lines)
@@ -268,15 +260,8 @@ function m.core_print(state)
 		state.curr:print(lines)
 	end, "print code listing (use the print pipeline)"})
 
-	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b)
-		local tmp = state.curr:all()
-		for i = a, b do print(i, tmp[i].text) end
-	end, "print lines prefixed by their line number"})
-
-	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b)
-		local tmp = state.curr:all()
-		for i = a, b do print(tmp[i].text) end
-	end, "print lines raw (without any processing such as syntax highlighting etc.)"})
+	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b) state.curr:map(function(i, l) print(i, l.text) end) end, "print lines with line numbers"})
+	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b) state.curr:map(function(_, l) print(   l.text) end) end, "print raw lines"              })
 end
 
 function m.core_state(state)
@@ -421,11 +406,10 @@ end
 
 function m.find(state)
 	table.insert(state.cmds.range_global, {"^:find *(%p)(.-)%1$", function(m, a, b)
-		local tmp = state.curr:all()
 		local lines = {}
-		for i, v in ipairs(tmp) do
+		state.curr:map(function(i, l)
 			if a <= i and i <= b and v.text:find(m[2]) then lines[i] = true end
-		end
+		end)
 		state.curr:print(lines)
 	end, "search for pattern"})
 end
@@ -631,7 +615,7 @@ end
 function m.pygmentize_mode_detect(state)
 	local function guess(curr)
 		local tmp = {}
-		for _, v in ipairs(curr:all()) do table.insert(tmp, v.text) end
+		curr:map(function(_, l) table.insert(tmp, l.text) end)
 		curr.conf.ext.mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
 	end
 

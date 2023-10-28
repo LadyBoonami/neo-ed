@@ -27,9 +27,7 @@ end
 
 function mt.__index:all()
 	local ret = {}
-	for _, l in ipairs(self.prev) do table.insert(ret, lib.dup(l)) end
-	for _, l in ipairs(self.curr) do table.insert(ret, lib.dup(l)) end
-	for _, l in ipairs(self.next) do table.insert(ret, lib.dup(l)) end
+	self:map(function(_, l) table.insert(ret, lib.dup(l)) end)
 	return ret
 end
 
@@ -52,6 +50,14 @@ function mt.__index:close(force)
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
+end
+
+function mt.__index:curr_first()
+	return #self.prev + 1
+end
+
+function mt.__index:curr_last()
+	return #self.prev + #self.curr
 end
 
 function mt.__index:diff()
@@ -97,6 +103,23 @@ function mt.__index:insert(a, tbl)
 	for i, l in ipairs(tbl) do table.insert(self.curr, a + i, l) end
 end
 
+function mt.__index:length()
+	return #self.prev + #self.curr + #self.next
+end
+
+function mt.__index:map(f)
+	for i, l in ipairs(self.prev) do local ret = f(                          i, l); if ret ~= nil then return ret end end
+	for i, l in ipairs(self.curr) do local ret = f(#self.prev +              i, l); if ret ~= nil then return ret end end
+	for i, l in ipairs(self.next) do local ret = f(#self.prev + #self.curr + i, l); if ret ~= nil then return ret end end
+end
+
+function mt.__index:rmap(f)
+	for i = #self.next, 1, -1 do local ret = f(#self.prev + #self.curr + i, self.next[i]); if ret ~= nil then return ret end end
+	for i = #self.curr, 1, -1 do local ret = f(#self.prev +              i, self.curr[i]); if ret ~= nil then return ret end end
+	for i = #self.prev, 1, -1 do local ret = f(                          i, self.prev[i]); if ret ~= nil then return ret end end
+end
+
+-- TODO: can this be done without cloning the entire buffer?
 function mt.__index:print(lines)
 	if not lines then
 		lines = {}
@@ -145,13 +168,11 @@ function mt.__index:save(path)
 	lib.hook(self.state.hooks.save_pre, self)
 
 	if self.conf.trim then
-		for i, l in ipairs(self.prev) do self.prev[i].text = l.text:match("^(.-)%s*$") end
-		for i, l in ipairs(self.curr) do self.curr[i].text = l.text:match("^(.-)%s*$") end
-		for i, l in ipairs(self.next) do self.next[i].text = l.text:match("^(.-)%s*$") end
+		self:map(function(_, l) l.text = l.text:match("^(.-)%s*$") end)
 	end
 
 	local s = {}
-	for _, v in ipairs(self:all()) do table.insert(s, v.text) end
+	self:map(function(_, l) table.insert(s, l.text) end)
 	if self.conf.end_nl then table.insert(s, "") end
 	s = table.concat(s, "\n")
 	for i = #self.state.filters.write, 1, -1 do s = self.state.filters.write[i](s, self) end

@@ -13,6 +13,7 @@
 - Don't auto-print files when opening, instead print current file after loading in `state` constructor and `e` command
 - Proper API for buffer lines
 - Linked list based buffer for better performance?
+- More efficient undo history format?
 
 # Someday / Maybe
 
