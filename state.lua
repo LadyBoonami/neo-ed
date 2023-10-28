@@ -95,7 +95,6 @@ function mt.__index:load(path)
 	table.insert(self.files, ret)
 	ret.id = #self.files
 	self.curr = ret
-	ret:print()
 	return ret
 end
 
@@ -238,6 +237,8 @@ return function(files)
 	else
 		ret:load()
 	end
+
+	ret.curr:print()
 
 	return ret
 end

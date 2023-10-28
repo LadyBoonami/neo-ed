@@ -260,12 +260,18 @@ function m.core_print(state)
 		state.curr:print(lines)
 	end, "print code listing (use the print pipeline)"})
 
-	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b) state.curr:map(function(i, l) print(i, l.text) end) end, "print lines with line numbers"})
-	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b) state.curr:map(function(_, l) print(   l.text) end) end, "print raw lines"              })
+	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b)
+		state.curr:map(function(i, l) if a <= i and i <= b then print(i, l.text) end end)
+	end, "print lines with line numbers"})
+
+	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b)
+		state.curr:map(function(i, l) if a <= i and i <= b then print(l.text) end end)
+	end, "print raw lines"})
+
 end
 
 function m.core_state(state)
-	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load    (m[1])                             end, "open file"       })
+	table.insert(state.cmds.file, {"^e +(.+)$", function(m) state     :load    (m[1]):print()                     end, "open file"       })
 	table.insert(state.cmds.file, {"^f +(.+)$", function(m) state.curr:set_path(m[1]); state.curr.modified = true end, "set file name"   })
 	table.insert(state.cmds.file, {"^q$"      , function( ) state.curr:close   (    )                             end,       "close file"})
 	table.insert(state.cmds.file, {"^Q$"      , function( ) state.curr:close   (true)                             end, "force close file"})
@@ -383,7 +389,7 @@ function m.clipboard(state)
 end
 
 function m.config_file(state)
-	table.insert(state.cmds.file, {"^:config$", function() state:load(state.config_file) end, "open config file"})
+	table.insert(state.cmds.file, {"^:config$", function() state:load(state.config_file):print() end, "open config file"})
 end
 
 function m.eol(state)
