@@ -102,8 +102,8 @@ function mt.__index:focus(first, last)
 end
 
 function mt.__index:insert(a, tbl)
-	table.move(self.curr, a, #self.curr, a + #tbl)
-	for i, l in ipairs(tbl) do self.curr[a + i - 1] = l end
+	table.move(self.curr, a + 1, #self.curr, a + 1 + #tbl)
+	for i, l in ipairs(tbl) do self.curr[a + i] = l end
 end
 
 function mt.__index:length()
