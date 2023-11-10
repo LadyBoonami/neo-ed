@@ -7,14 +7,11 @@ m.trace = false
 local rl = require "readline"
 rl.set_readline_name("ned")
 rl.set_options{
-	auto_add  = false,
-	histfile  = "",
-	keeplines = 10,
+	auto_add   = false,
+	completion = false,
+	histfile   = "",
+	keeplines  = 10,
 }
-rl.set_complete_function(function(text, from, to)
-	rl.set_completion_append_character("")
-	return {text:sub(from, to) .. "\t"}
-end)
 
 function m.dup(t)
 	local ret = {}
@@ -106,6 +103,16 @@ function m.pipe(cmd, stdin)
 		return table.concat(ret)
 
 	end
+end
+
+function m.print_doc(s)
+	print((s
+		:gsub("\t", "")
+		:gsub("\n$", "")
+		:gsub("%*%*([^\n]-)%*%*", "\x1b[1m%1\x1b[0m")
+		:gsub("__([^\n]-)__", "\x1b[4m%1\x1b[0m")
+		:gsub("`([^\n]-)`", "\x1b[33m%1\x1b[0m")
+	))
 end
 
 function m.readline(prompt, ac)

@@ -165,6 +165,7 @@ return function(files)
 		close      = {},
 		diff_pre   = {},
 		diff_post  = {},
+		input_post = {},
 		load_pre   = {},
 		load_post  = {},
 		print_pre  = {},

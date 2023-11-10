@@ -40,7 +40,7 @@ function m.core_editing(state)
 			local i = 1
 			while true do
 				local pre = buf.curr[a + i - 1] and buf.curr[a + i - 1].text:match("^(%s*)") or ""
-				local s = lib.readline("", {pre})
+				local s = buf:get_input({pre})
 				if s then table.insert(buf.curr, a + i, {text = s}); i = i + 1 else break end
 			end
 		end)
@@ -49,7 +49,7 @@ function m.core_editing(state)
 	table.insert(state.cmds.line, {"^c$", function(m, a)
 		state.curr:change(function(buf)
 			local pre = buf.curr[a].text:match("^(%s*)")
-			buf.curr[a].text = lib.readline("", {pre, buf.curr[a].text})
+			buf.curr[a].text = buf:get_input({pre, buf.curr[a].text})
 		end)
 	end, "change line"})
 
@@ -82,7 +82,7 @@ function m.core_editing(state)
 			while true do
 				local i_ = i == 1 and (a + i - 1) or (a + i - 2)
 				local pre = buf.curr[i_] and buf.curr[i_].text:match("^(%s*)") or ""
-				local s = lib.readline("", {pre})
+				local s = buf:get_input({pre})
 				if s then table.insert(buf.curr, a + i - 1, {text = s}); i = i + 1 else break end
 			end
 		end)
@@ -184,36 +184,38 @@ function m.core_help(state)
 		f(state.cmds.file)
 	end, "show help"})
 
-	table.insert(state.cmds.file, {"^hp$", function()
-		print "Lua pattern quick reference"
-		print ""
-		print "Character classes (uppercase character for inverted set):"
-		print "  x where x not in ^$()%.[]*+-? : x itself"
-		print "  %x where x not alphanumeric: character x (escaped)"
-		print "  . : all characters"
-		print "  %a: all letters"
-		print "  %c: control characters"
-		print "  %d: digits"
-		print "  %g: printable characters except space"
-		print "  %l: lowercase letters"
-		print "  %p: punctuation characters"
-		print "  %s: space characters"
-		print "  %u: uppercase letters"
-		print "  %w: alphanumeric characters"
-		print "  %x: hexadecimal digits"
-		print "  [set..] : all characters in that set"
-		print "  [^set..]: all characters not in that set"
-		print ""
-		print "Patterns:"
-		print "  set*: zero or more times"
-		print "  set+: one or more times"
-		print "  set-: zero or more times, shortest possible match"
-		print "  set?: zero or one time"
-		print "  %n: capture #n (1-9)"
-		print "  %bxy: string that starts with x, ends with y, and contains an equal amount of x and y"
-		print "  %f[set..]: empty string between a character not in the set and a character in the set, beginning and end are \\0"
-		print ""
-		print "For more details, see https://www.lua.org/manual/5.4/manual.html#6.4.1"
+	table.insert(state.cmds.file, {"^h patterns$", function()
+		lib.print_doc [[
+			**Lua pattern quick reference**
+
+			Character classes (uppercase character for inverted set):
+			  __x__ where __x__ not in `^$()%.[]*+-?`: __x__ itself
+			  `%`__x__ where __x__ not alphanumeric: character __x__ (escaped)
+			  `.` : all characters
+			  `%a`: all letters
+			  `%c`: control characters
+			  `%d`: digits
+			  `%g`: printable characters except space
+			  `%l`: lowercase letters
+			  `%p`: punctuation characters
+			  `%s`: space characters
+			  `%u`: uppercase letters
+			  `%w`: alphanumeric characters
+			  `%x`: hexadecimal digits
+			  `[`__set..__`]` : all characters in that set
+			  `[^`__set..__`]`: all characters not in that set
+
+			Patterns:
+			  __set__`*`: zero or more times
+			  __set__`+`: one or more times
+			  __set__`-`: zero or more times, shortest possible match
+			  __set__`?`: zero or one time
+			  `%`__n__: capture #__n__ (1-9)
+			  `%b`__xy__: string that starts with __x__, ends with __y__, and contains an equal amount of __x__ and __y__
+			  `%f[`__set..__`]`: empty string between a character not in the set and a character in the set, beginning and end are `\0`
+
+			For more details, see `https://www.lua.org/manual/5.4/manual.html#6.4.1`.
+		]]
 	end, "show Lua pattern help"})
 end
 
@@ -311,7 +313,6 @@ function m.align(state)
 					if bytes then max = math.max(max, utf8.len(l.text:sub(1, bytes - 1))) end
 				end
 			end
-			print(max)
 			for i, l in ipairs(buf.curr) do
 				if a <= i and i <= b then
 					local bytes = lib.find_nth(l.text, m[2], n)
@@ -356,7 +357,7 @@ function m.clipboard(state)
 	elseif os.getenv("DISPLAY") ~= "" then
 		copy_cmd     = "xclip -i -selection clipboard"
 		paste_cmd    = "xclip -o -selection clipboard"
-		paste_filter = function(t) table.remove(t) end
+		paste_filter = function() end
 
 	else
 		return
@@ -400,7 +401,7 @@ function m.eol(state)
 		return s:gsub("\n", "\r\n")
 	end)
 
-	table.insert(state.cmds.file, {"^:crlf ([01])$", function(m) state.curr.conf.crlf = m[1] == "1" end, "Set CRLF line breaks"})
+	table.insert(state.cmds.file, {"^:crlf ([yn])$", function(m) state.curr.conf.crlf = m[1] == "y" end, "Set CRLF line breaks"})
 end
 
 function m.eol_filter(state)
@@ -414,7 +415,7 @@ function m.find(state)
 	table.insert(state.cmds.range_global, {"^:find *(%p)(.-)%1$", function(m, a, b)
 		local lines = {}
 		state.curr:map(function(i, l)
-			if a <= i and i <= b and v.text:find(m[2]) then lines[i] = true end
+			if a <= i and i <= b and l.text:find(m[2]) then lines[i] = true end
 		end)
 		state.curr:print(lines)
 	end, "search for pattern"})
@@ -480,8 +481,9 @@ function m.ssh_url(state)
 end
 
 function m.tabs_filter(state)
-	table.insert(state.cmds.file, {"^:tabs +(%d+)$"  , function(m) state.curr.conf.tabs   = tonumber(m[1]) end, "set tab width"  })
-	table.insert(state.cmds.file, {"^:indent +(%d+)$", function(m) state.curr.conf.indent = tonumber(m[1]) end, "set indentation"})
+	table.insert(state.cmds.file, {"^:tabs +(%d+)$"   , function(m) state.curr.conf.tabs    = tonumber(m[1]) end, "set tab width"      })
+	table.insert(state.cmds.file, {"^:indent +(%d+)$" , function(m) state.curr.conf.indent  = tonumber(m[1]) end, "set indentation"    })
+	table.insert(state.cmds.file, {"^:tab2spc ([yn])$", function(m) state.curr.conf.tab2spc = m[1] == "y"    end, "set tab replacement"})
 
 	table.insert(state.print.post, function(lines, b)
 		local color = {
@@ -500,13 +502,13 @@ function m.tabs_filter(state)
 				table.insert(t, wsp)
 				return table.concat(t)
 			end
-			table.insert(t, color[i % 6 + 1]("┆"))
 			table.insert(t, wsp:sub(2, b.conf.indent))
+			table.insert(t, color[i % 6 + 1]("┆"))
 			return spcs(wsp:sub(b.conf.indent + 1), t, i + 1)
 		end
 
-		local tab = (" "):rep(b.conf.tabs - 1)
-		local tab_ = "│" .. (" "):rep(b.conf.tabs - 1)
+		local tab = (" "):rep(b.conf.tabs - 2)
+		local tab_ = (b.conf.tabs > 1 and "·" or "") .. (" "):rep(b.conf.tabs - 2) .. "│"
 		local function tabs(wsp, t, i)
 			t = t or {}
 			i = i or 0
@@ -515,18 +517,25 @@ function m.tabs_filter(state)
 				table.insert(t, wsp)
 				return table.concat(t)
 			end
-			table.insert(t, color[i % 6 + 1]("│"))
+			if b.conf.tabs > 1 then table.insert(t, color[i % 6 + 1]("·")) end
 			table.insert(t, tab)
+			table.insert(t, color[i % 6 + 1]("│"))
 			return tabs(wsp:sub(2), t, i + 1)
 		end
 
 		for i, l in ipairs(lines) do
 			lines[i].text = l.text
-				:gsub("^(\x1b[^m]-m)([\t ]+)" , function(pre, wsp) return tabs(wsp) end)
-				:gsub(            "^([\t ]+)" , function(     wsp) return spcs(wsp) end)
+				:gsub("^(\x1b[^m]-m)([\t ]+)", function(pre, wsp) return tabs(wsp) end)
+				:gsub(            "^([\t ]+)", function(     wsp) return spcs(wsp) end)
 				:gsub("\t", tab_)
 		end
 		return lines
+	end)
+
+	table.insert(state.hooks.input_post, function(l, buf)
+		if not buf.conf.tab2spc then return l end
+		local spc = (" "):rep(buf.conf.indent)
+		return l:gsub("\t", spc)
 	end)
 end
 
@@ -565,7 +574,7 @@ function m.editorconfig(state)
 			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
 			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
 			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
-			if conf.                                                                                                                                                                         end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
+			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
 			if conf.charset                  then b.conf.charset = conf.charset                                                                                                              end
 			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
 
@@ -575,6 +584,29 @@ function m.editorconfig(state)
 			end
 		end
 	end)
+
+	table.insert(state.cmds.file, {"^h editorconfig$", function()
+		lib.print_doc [[
+			Patterns:
+			  `*`: any string of characters, except `/`
+			  `**`: any string of characters
+			  `?`: any single character, except `/`
+			  `[`__seq__`]`: any single character in __seq__
+			  `[!`__seq__`]`: any single character not in __seq__
+			  `{`__s1__`,`__s2__`,`__s3__`}`: any of the strings given
+			  `{`__num1__`..`__num2__`}`: any integer numbers between __num1__ and __num2__ (can be negative)
+			  `\`: escape other character
+
+			Keys:
+			  `indent_style`: set to `tab` or `space` to use hard or soft tabs (i.e. tabs are replaced by spaces when entered)
+			  `indent_size`: set to a whole number defining the number of columns per indentation level and the width of soft tabs, or `tab` to default to the setting of `tab_width`
+			  `tab_width`: set to a whole number defining the width of a tab character, defaults to `indent_size`
+			  `end_of_line`: set to `lf` or `crlf` to control how line breaks are saved
+			  `charset`: set to `latin1`, `utf-8`, `utf-16be` or `utf-16le` to control input and output character set
+			  `trim_trailing_whitespace`: set to `true` to remove trailing whitespace characters
+			  `insert_final_newline`: set to `true` to save the file with a final newline
+			]]
+	end, "show editorconfig help"})
 end
 
 function m.pygmentize_filter(state)

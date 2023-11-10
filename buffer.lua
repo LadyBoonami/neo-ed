@@ -101,6 +101,14 @@ function mt.__index:focus(first, last)
 	end
 end
 
+function mt.__index:get_input(ac)
+	local ret = lib.readline("", ac)
+	if ret then
+		for _, f in ipairs(self.state.hooks.input_post) do ret = f(ret, self) end
+	end
+	return ret
+end
+
 function mt.__index:insert(a, tbl)
 	table.move(self.curr, a + 1, #self.curr, a + 1 + #tbl)
 	for i, l in ipairs(tbl) do self.curr[a + i] = l end
@@ -154,7 +162,7 @@ function mt.__index:print(lines)
 
 	local w = #tostring(#all)
 	for i, l in ipairs(all) do
-		if lines[i] then io.stdout:write(("%" .. tostring(w) .. "d│%s\n"):format(i, l.text)) end
+		if lines[i] then io.stdout:write(("\x1b[33m%" .. tostring(w) .. "d│\x1b[0m%s\n"):format(i, l.text)) end
 	end
 
 	lib.hook(self.state.hooks.print_post, self, all, lines)
