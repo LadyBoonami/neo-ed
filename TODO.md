@@ -3,9 +3,6 @@
 - trim
 - autosave
 - tutorial
-- selection / file picker API
-- `fzf` based picker
-- `E`, `R` commands as variants of lowercase commands using a file picker
 - undo history as `U` using a picker
 
 # Other

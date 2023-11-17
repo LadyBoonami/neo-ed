@@ -136,6 +136,32 @@ function mt.__index:main()
 	end
 end
 
+function mt.__index:path_hdl(s)
+	local s_ = s:match("^!(.*)$")
+	if s_ then return assert(io.popen(s_, "r")) end
+	return assert(io.open(self:path_resolve(s), "r"))
+end
+
+function mt.__index:path_resolve(s)
+	local s_ = s:match("^@(.*)$")
+	if s_ then s = assert(self:pick_file(s_ ~= "" and s_ or nil)) end
+	local h <close> = io.popen("realpath --relative-base=. " .. lib.shellesc(s), "r")
+	return h:read("l")
+end
+
+function mt.__index:pick(choices)
+	return lib.readline(">> ", choices)
+end
+
+function mt.__index:pick_file(base)
+	base = base or "."
+	if posix.sys.stat.S_ISDIR(assert(posix.sys.stat.stat(base)).st_mode) == 0 then return base end
+	local paths = {}
+	for f in posix.dirent.files(base) do table.insert(paths, base .. "/" .. f) end
+	table.sort(paths)
+	return self:pick_file(self:pick(paths))
+end
+
 function mt.__index:quit(force)
 	while self.files[1] do self.files[1]:close(force) end
 end

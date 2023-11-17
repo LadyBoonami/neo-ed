@@ -10,7 +10,8 @@ Dependencies:
 - Lua `readline` bindings
 - Optional: `pygments` for syntax highlighting
 - Optional: `wl-clipboard` or `xclip` for clipboard support
-- Optional: `editorconfig-core-c` for Editorconfig support
+- Optional: `editorconfig` for Editorconfig support
+- Optional: `fzf` for a nice selection dialog provider
 
 Put this repository into your `LUA_PATH`, and symlink `main.lua` as `ned` into your `PATH`.
 
@@ -90,6 +91,8 @@ For a complete overview of commands, including those installed by plugins, use t
 - `wq`: write changes, then close file
 - `wqq`: write changes, then quit editor
 - `#<n>`: switch to open file no. `<n>`
+
+Each file path can be a directory path prefixed by a `@` symbol to open a file picker there.
 
 ### Line
 

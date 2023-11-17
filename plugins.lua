@@ -118,9 +118,9 @@ function m.core_editing(state)
 		end)
 	end, "move lines"})
 
-	table.insert(state.cmds.line, {"^r +(!?)(.*)$", function(m, a)
+	table.insert(state.cmds.line, {"^r +(.*)$", function(m, a)
 		state.curr:change(function(buf)
-			local h <close> = #m[1] > 0 and io.popen(m[2], "r") or assert(io.open(m[2], "r"))
+			local h <close> = buf.state:path_hdl(m[1])
 			local tmp = {}
 			for l in h:lines() do table.insert(tmp, {text = l}) end
 			buf:insert(a, tmp)
@@ -607,6 +607,12 @@ function m.editorconfig(state)
 			  `insert_final_newline`: set to `true` to save the file with a final newline
 			]]
 	end, "show editorconfig help"})
+end
+
+function m.fzf_picker(state)
+	state.pick = function(_, choices)
+		return lib.pipe("fzf", table.concat(choices, "\n") .. "\n"):match("^[^\n]*")
+	end
 end
 
 function m.pygmentize_filter(state)

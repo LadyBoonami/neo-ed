@@ -201,9 +201,11 @@ function mt.__index:save(path)
 end
 
 function mt.__index:set_path(path)
+	path = self.state:path_resolve(path)
+
 	local bypath = {}
 	for _, v in ipairs(self.state.files) do
-		if v.name then bypath[lib.realpath(v.name)] = true end
+		if v.path then bypath[lib.realpath(v.path)] = true end
 	end
 
 	local canonical = lib.realpath(path)
@@ -261,7 +263,7 @@ return function(state, path)
 	lib.hook(ret.state.hooks.load_pre, ret)
 
 	if path then
-		local s = lib.match(path, state.protocols,
+		local s = lib.match(ret.path, state.protocols,
 			function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
 			function(t, p) return t.read(p) end
 		)
