@@ -93,7 +93,7 @@ end
 function mt.__index:load(path)
 	local ret = require "neo-ed.buffer" (self, path)
 	table.insert(self.files, ret)
-	table.sort(self.files, function(a, b) return a.path < b.path end)
+	table.sort(self.files, function(a, b) return (a.path or "") < (b.path or "") end)
 	for i, f in ipairs(self.files) do f.id = i end
 	self.curr = ret
 	return ret
