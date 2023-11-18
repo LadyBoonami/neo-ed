@@ -19,7 +19,4 @@ if os.execute("which pygmentize >/dev/null 2>&1") then
 	plugins.pygmentize_mode_detect(state)
 	plugins.pygmentize_filter(state)
 end
-
--- enable extra plugins which may be considered dangerous
---plugins.autocmd(state)
 ]=]

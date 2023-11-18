@@ -327,6 +327,37 @@ function m.align(state)
 	end, "align matched pattern by padding with spaces"})
 end
 
+function m.autocmd(state)
+	local use = {}
+	local function validate(s)
+		if s == nil then return nil end
+		if use[s] == nil then
+			local answer
+			repeat
+				print("Enable hook? " .. s)
+				answer = lib.readline("(y/n) ")
+			until answer:lower() == "y" or answer:lower() == "n"
+			use[s] = answer:lower() == "y"
+		end
+		return use[s] and s or nil
+	end
+
+	table.insert(state.hooks.load_post, function(b)
+		local cmd = validate(b.conf.autocmd_load_post)
+		if cmd then b.state:cmd(cmd) end
+	end)
+
+	table.insert(state.hooks.save_pre, function(b)
+		local cmd = validate(b.conf.autocmd_save_pre)
+		if cmd then b.state:cmd(cmd) end
+	end)
+
+	table.insert(state.hooks.save_post, function(b)
+		local cmd = validate(b.conf.autocmd_save_post)
+		if cmd then b.state:cmd(cmd) end
+	end)
+end
+
 function m.charset(state)
 	local encodings = {
 		["latin1"  ] = "ISO8859_1",
@@ -542,6 +573,7 @@ end
 function m.def(state)
 	m.core       (state)
 	m.align      (state)
+	m.autocmd    (state)
 	m.charset    (state)
 	m.clipboard  (state)
 	m.config_file(state)
@@ -553,12 +585,6 @@ function m.def(state)
 	m.ssh_url    (state)
 	m.shell      (state)
 	m.tabs_filter(state)
-end
-
-function m.autocmd(state)
---	table.insert(state.hooks.save_post, function(b)
---		if b.conf.ext.autocmd then b.state:cmd(b.conf.ext.autocmd) end
---	end)
 end
 
 function m.editorconfig(state)
