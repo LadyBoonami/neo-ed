@@ -256,7 +256,6 @@ return function(state, path)
 		tabs    = 4    ,
 		trim    = false,
 	}
-	ret.conf.ext = {}
 
 	if path then ret:set_path(path) end
 

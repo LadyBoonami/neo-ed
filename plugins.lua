@@ -556,12 +556,39 @@ function m.def(state)
 end
 
 function m.autocmd(state)
-	table.insert(state.hooks.save_post, function(b)
-		if b.conf.ext.autocmd then b.state:cmd(b.conf.ext.autocmd) end
-	end)
+--	table.insert(state.hooks.save_post, function(b)
+--		if b.conf.ext.autocmd then b.state:cmd(b.conf.ext.autocmd) end
+--	end)
 end
 
 function m.editorconfig(state)
+	local function from_editorconfig(from, to)
+		to = to or {}
+
+		local t = {
+			charset                  = function(v) return "charset", v                    end,
+			end_of_line              = function(v) return "crlf", v:lower() == "crlf"     end,
+			indent_size              = function( ) return ""                              end,
+			indent_style             = function(v) return "tab2spc", v:lower() == "space" end,
+			tab_width                = function(v) return "tabs", tonumber(v) or 4        end,
+			trim_trailing_whitespace = function(v) return "trim", v:lower() == "true"     end,
+		}
+
+		for k, v in pairs(from) do
+			local k_, v_
+			k_ = k:match("^ned_(.*)$")
+			if k_ then v_ = v end
+			if not k_ and t[k] then k_, v_ = t[k](v) end
+			if k_ then to[k_] = v_ end
+		end
+
+		if from.indent_size then
+			to.indent = (from.indent_size:lower() == "tab" and (tonumber(from.tab_width) or to.tabs or 4)) or tonumber(from.indent_size) or 4
+		end
+
+		return to
+	end
+
 	table.insert(state.hooks.load_pre, function(b)
 		if b.path then
 			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
@@ -571,17 +598,7 @@ function m.editorconfig(state)
 				if k then conf[k] = v end
 			end
 
-			if conf.indent_style             then b.conf.tab2spc = conf.indent_style:lower() == "space"                                                                                      end
-			if conf.indent_size              then b.conf.indent  = (conf.indent_size:lower() == "tab" and (tonumber(conf.tab_width) or b.conf.tabs or 4)) or tonumber(conf.indent_size) or 4 end
-			if conf.tab_width                then b.conf.tabs    = tonumber(conf.tab_width) or 4                                                                                             end
-			if conf.end_of_line              then b.conf.crlf    = conf.end_of_line:lower() == "crlf"                                                                                        end
-			if conf.charset                  then b.conf.charset = conf.charset                                                                                                              end
-			if conf.trim_trailing_whitespace then b.conf.trim    = conf.trim_trailing_whitespace == "true"                                                                                   end
-
-			for k, v in pairs(conf) do
-				local k_ = k:match("^ned%-(.*)$")
-				if k_ then b.conf.ext[k_] = v end
-			end
+			from_editorconfig(conf, b.conf)
 		end
 	end)
 
@@ -605,7 +622,7 @@ function m.editorconfig(state)
 			  `charset`: set to `latin1`, `utf-8`, `utf-16be` or `utf-16le` to control input and output character set
 			  `trim_trailing_whitespace`: set to `true` to remove trailing whitespace characters
 			  `insert_final_newline`: set to `true` to save the file with a final newline
-			]]
+		]]
 	end, "show editorconfig help"})
 end
 
@@ -617,7 +634,7 @@ end
 
 function m.pygmentize_filter(state)
 	state.print.highlight = function(lines, curr)
-		if curr.conf.ext.mode then
+		if curr.conf.mode then
 			local tmp = curr:all()
 			local a = 1
 			local b = #tmp
@@ -633,7 +650,7 @@ function m.pygmentize_filter(state)
 				for i = a    , b     do table.insert(main, tmp[i]); table.insert(raw, tmp[i].text) end
 				for i = b + 1, #tmp  do table.insert(suf , tmp[i])                                 end
 
-				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.ext.mode), table.concat(raw, "\n"))
+				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.mode), table.concat(raw, "\n"))
 
 				local ret = {}
 				for _, l in ipairs(pre) do table.insert(ret, l) end
@@ -653,22 +670,22 @@ function m.pygmentize_filter(state)
 		return lines
 	end
 
-	table.insert(state.cmds.file, {"^:mode +(.+)$", function(m) state.curr.conf.ext.mode = m[1] end, "set file type"})
+	table.insert(state.cmds.file, {"^:mode +(.+)$", function(m) state.curr.conf.mode = m[1] end, "set file type"})
 end
 
 function m.pygmentize_mode_detect(state)
 	local function guess(curr)
 		local tmp = {}
 		curr:map(function(_, l) table.insert(tmp, l.text) end)
-		curr.conf.ext.mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
+		curr.conf.mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
 	end
 
 	table.insert(state.hooks.load_post, function(curr)
-		if curr.path and not curr.conf.ext.mode then
+		if curr.path and not curr.conf.mode then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
-			curr.conf.ext.mode = h:read("l")
+			curr.conf.mode = h:read("l")
 		end
-		if #curr.curr > 100 and (not curr.conf.ext.mode or curr.conf.ext.mode == "text") then guess(curr) end
+		if #curr.curr > 100 and (not curr.conf.mode or curr.conf.mode == "text") then guess(curr) end
 	end)
 
 	table.insert(state.cmds.file, {"^:guess$", function() guess(state.curr) end, "guess file type from content"})

@@ -109,7 +109,7 @@ function mt.__index:main()
 				i,
 				i == self.curr.id and "]" or " ",
 				f.path,
-				f.conf.ext.mode,
+				f.conf.mode,
 				f.conf.charset,
 				f.conf.crlf and " (DOS line endings)" or "",
 				#f.prev + #f.curr + #f.next,
