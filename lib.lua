@@ -2,7 +2,8 @@ local m = {}
 
 local posix = require "posix"
 
-m.trace = false
+m.profile_hooks = false
+m.stacktraces = false
 
 local rl = require "readline"
 rl.set_readline_name("ned")
@@ -17,6 +18,10 @@ function m.dup(t)
 	local ret = {}
 	for k, v in pairs(t) do ret[k] = v end
 	return ret
+end
+
+function m.error(msg)
+	error(msg, m.stacktraces and 2 or 0)
 end
 
 function m.find_nth(s, pat, n)
@@ -36,11 +41,11 @@ function m.hook(h, ...)
 
 	for _, f in ipairs(h) do
 		local before = posix.sys.time.gettimeofday()
-		local ok, msg = xpcall(f, debug.traceback, ...)
+		local ok, msg = xpcall(f, m.traceback, ...)
 		local after = posix.sys.time.gettimeofday()
 		if not ok then print("hook failed: " .. msg) end
 
-		if m.trace then
+		if m.profile_hooks then
 			local info = debug.getinfo(f, "S")
 			local delta = (after.tv_sec + after.tv_usec / 1000000) - (before.tv_sec + before.tv_usec / 1000000)
 			print("    " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ":" .. delta)
@@ -48,8 +53,12 @@ function m.hook(h, ...)
 	end
 end
 
+function m.id(...)
+	return ...
+end
+
 function m.match(s, tbl, def, wrap, ...)
-	def  = def  or function(s) error("could not parse: " .. s) end
+	def  = def  or function(s) m.error("could not parse: " .. s) end
 	wrap = wrap or function(f, ...) return f(...) end
 
 	for _, v in ipairs(tbl) do
@@ -98,7 +107,7 @@ function m.pipe(cmd, stdin)
 
 		pu.close(c2p_r)
 		local _, status, id = posix.sys.wait.wait(p)
-		if status ~= "exited" or id ~= 0 then error("command " .. status .. " " .. tostring(id)) end
+		if status ~= "exited" or id ~= 0 then m.error("command " .. status .. " " .. tostring(id)) end
 
 		return table.concat(ret)
 
@@ -129,6 +138,10 @@ end
 
 function m.shellesc(s)
 	return "'" .. s:gsub("'", "'\\''") .. "'"
+end
+
+function m.traceback(s)
+	if m.stacktraces then return debug.traceback(s, 2) else return s end
 end
 
 return m

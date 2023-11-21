@@ -10,7 +10,7 @@ function mt.__index:addr(s, loc)
 		local a_, s_ = lib.match(s, self.state.cmds.addr.cont, function() end, nil, a)
 		if a_ then return cont(a_, s_) end
 		if s == "" then return a end
-		error("could not parse: " .. s)
+		lib.error("could not parse: " .. s)
 	end
 
 	local a, s_ = lib.match(s, self.state.cmds.addr.prim, function() end, nil)
@@ -22,7 +22,7 @@ function mt.__index:addr(s, loc)
 		end
 		return a
 	end
-	error("could not parse: " .. s)
+	lib.error("could not parse: " .. s)
 end
 
 function mt.__index:all()
@@ -35,18 +35,18 @@ function mt.__index:change(f)
 	if self._changing then f() else
 		self._changing = true
 		self:undo_point()
-		local ok, err = xpcall(f, debug.traceback, self)
+		local ok, err = xpcall(f, lib.traceback, self)
 		self._changing = nil
 		if not ok then
 			self:undo()
-			error(err)
+			lib.error(err)
 		end
 		self:diff()
 	end
 end
 
 function mt.__index:close(force)
-	if self.modified and not force then error("buffer modified") end
+	if self.modified and not force then lib.error("buffer modified") end
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
@@ -142,7 +142,7 @@ function mt.__index:print(lines)
 	lib.hook(self.state.hooks.print_pre, self, all, lines)
 
 	local function go(f)
-		local ok, r = xpcall(f, debug.traceback, all, self)
+		local ok, r = xpcall(f, lib.traceback, all, self)
 		if ok then
 			if not r then
 				local info = debug.getinfo(f, "S")
@@ -209,14 +209,14 @@ function mt.__index:set_path(path)
 	end
 
 	local canonical = lib.realpath(path)
-	if bypath[canonical] then error("already opened: " .. canonical) end
+	if bypath[canonical] then lib.error("already opened: " .. canonical) end
 
 	self.path = path
 end
 
 function mt.__index:undo()
 	local h = table.remove(self.history)
-	if not h then error("no undo point found") end
+	if not h then lib.error("no undo point found") end
 	for k, v in pairs(h) do self[k] = v end
 end
 

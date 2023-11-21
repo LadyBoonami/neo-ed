@@ -47,7 +47,7 @@ function mt.__index:cmd(s)
 		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, b) then return end
 		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, b) then return end
 
-		error("could not parse: " .. s)
+		lib.error("could not parse: " .. s)
 	end
 
 	local function cmd1(a, s)
@@ -69,7 +69,7 @@ function mt.__index:cmd(s)
 		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, a) then return end
 		if not lib.match(s, self.cmds.line, function() return true end, local1, a) then return end
 
-		error("could not parse: " .. s)
+		lib.error("could not parse: " .. s)
 	end
 
 	local function cmd0(s)
@@ -84,7 +84,7 @@ function mt.__index:cmd(s)
 		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
 		if not lib.match(s, self.cmds.line, function() return true end, local1, #self.curr.prev + #self.curr.curr) then return end
 
-		error("could not parse: " .. s)
+		lib.error("could not parse: " .. s)
 	end
 
 	return cmd0(s)
@@ -126,12 +126,12 @@ function mt.__index:main()
 		if not ok then
 			self.msg = "failed to read input: " .. cmd
 		elseif not cmd then
-			local ok, status = xpcall(self.quit, debug.traceback, self)
-			if not ok then self.msg = "command failed: " .. status end
+			local ok, status = xpcall(self.quit, lib.traceback, self)
+			if not ok then self.msg = status end
 		else
 			if cmd ~= "" then table.insert(self.history, cmd) end
-			local ok, status = xpcall(self.cmd, debug.traceback, self, cmd)
-			if not ok then self.msg = "command failed: " .. status end
+			local ok, status = xpcall(self.cmd, lib.traceback, self, cmd)
+			if not ok then self.msg = status end
 		end
 	end
 end
@@ -248,7 +248,7 @@ return function(files)
 			print("error loading config file: " .. err)
 			lib.readline("Press Enter to continue ... ")
 		else
-			local ok, err = xpcall(f, debug.traceback, ret)
+			local ok, err = xpcall(f, lib.traceback, ret)
 			if not ok then
 				print("error running config file: " .. err)
 				lib.readline("Press Enter to continue ... ")

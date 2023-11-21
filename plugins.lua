@@ -15,21 +15,21 @@ function m.core_addr_pat(state)
 	table.insert(state.cmds.addr.prim, {"^/(.-)/(.*)$", function(m)
 		return (
 			state.curr:map(function(i, l) if l.text:find(m[1]) then return i end end)
-			or error("pattern not found: /" .. m[1] .. "/")
+			or lib.error("pattern not found: /" .. m[1] .. "/")
 		), m[2]
 	end, "first matching line"})
 
 	table.insert(state.cmds.addr.cont, {"^/(.-)/(.*)$", function(m, base)
 		return (
 			state.curr:map(function(i, l) if i > base and l.text:find(m[1]) then return i end end)
-			or error("pattern not found: " .. tostring(base) .. "/" .. m[1] .. "/")
+			or lib.error("pattern not found: " .. tostring(base) .. "/" .. m[1] .. "/")
 		), m[2]
 	end, "first matching line after"})
 
 	table.insert(state.cmds.addr.cont, {"^\\(.-)\\(.*)$", function(m, base)
 		return (
 			state.curr:rmap(function(i, l) if i < base and l.text:find(m[1]) then return i end end)
-			or error("pattern not found: " .. tostring(base) .. "\\" .. m[1] .. "\\")
+			or lib.error("pattern not found: " .. tostring(base) .. "\\" .. m[1] .. "\\")
 		), m[2]
 	end, "last matching line before"})
 end
@@ -111,7 +111,7 @@ function m.core_editing(state)
 		state.curr:change(function(buf)
 			local dst = buf:addr(m[1], true)
 			if dst > b then dst = dst - (b - a + 1)
-			elseif dst > a then error("destination inside source range")
+			elseif dst > a then lib.error("destination inside source range")
 			end
 
 			buf:insert(dst, buf:extract(a, b))
@@ -139,7 +139,7 @@ function m.core_editing(state)
 					elseif m[4] == "" then
 						buf.curr[i].text = l.text:gsub(m[2], m[3], 1)
 					else
-						error("could not parse flags: " .. m[4])
+						lib.error("could not parse flags: " .. m[4])
 					end
 				end
 			end
@@ -227,21 +227,21 @@ function m.core_marks(state)
 	table.insert(state.cmds.addr.prim, {"^'(%l)(.*)$", function(m)
 		return (
 			state.curr:map(function(i, l) if l.mark == m[1] then return i end end)
-			or error("mark not found: '" .. m[1])
+			or lib.error("mark not found: '" .. m[1])
 		), m[2]
 	end, "first line with mark"})
 
 	table.insert(state.cmds.addr.cont, {"^'(%l)(.*)$", function(m, base)
 		return (
 			state.curr:map(function(i, l) if i > base and l.mark == m[1] then return i end end)
-			or error("mark not found: " .. tostring(base) .. "'" .. m[1])
+			or lib.error("mark not found: " .. tostring(base) .. "'" .. m[1])
 		), m[2]
 	end, "first line with mark after"})
 
 	table.insert(state.cmds.addr.cont, {"^`(%l)(.*)$", function(m, base)
 		return (
 			state.curr:rmap(function(i, l) if i < base and l.mark == m[1] then return i end end)
-			or error("mark not found: " .. tostring(base) .. "`" .. m[1])
+			or lib.error("mark not found: " .. tostring(base) .. "`" .. m[1])
 		), m[2]
 	end, "last line with mark before"})
 
@@ -290,6 +290,8 @@ function m.core_state(state)
 		state.curr = assert(state.files[tonumber(m[1])], "no such file")
 		state.curr:print()
 	end, "switch to open file"})
+
+	table.insert(state.cmds.file, {"^:trace ([yn])", function(m) lib.stacktraces = m[1] == "y" end, "enable stack traces for editor errors"})
 end
 
 function m.core(state)
@@ -462,7 +464,7 @@ function m.reload(state)
 	table.insert(state.cmds.file, {"^:reload$", function()
 		local files = {}
 		for _, v in ipairs(state.files) do
-			if v.modified then error("buffer modified: " .. v.path) end
+			if v.modified then lib.error("buffer modified: " .. v.path) end
 			table.insert(files, {path = v.path, cmd = tostring(#v.prev + 1) .. "," .. tostring(#v.prev + #v.curr) .. "f"})
 		end
 		for _, v in ipairs(state.files) do v:close() end
