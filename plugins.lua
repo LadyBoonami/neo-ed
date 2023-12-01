@@ -384,13 +384,11 @@ function m.clipboard(state)
 
 	if os.getenv("WAYLAND_DISPLAY") ~= "" then
 		copy_cmd     = "wl-copy"
-		paste_cmd    = "wl-paste"
-		paste_filter = function() end
+		paste_cmd    = "wl-paste --no-newline"
 
 	elseif os.getenv("DISPLAY") ~= "" then
 		copy_cmd     = "xclip -i -selection clipboard"
 		paste_cmd    = "xclip -o -selection clipboard"
-		paste_filter = function() end
 
 	else
 		return
@@ -416,7 +414,6 @@ function m.clipboard(state)
 			local h <close> = io.popen(paste_cmd, "r")
 			local tmp = {}
 			for l in h:lines() do print(l); table.insert(tmp, {text = l}) end
-			paste_filter(tmp)
 			buf:insert(a, tmp)
 		end)
 	end, "paste lines after"})
