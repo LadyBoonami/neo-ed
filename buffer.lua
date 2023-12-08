@@ -214,9 +214,11 @@ function mt.__index:set_path(path)
 	self.path = path
 end
 
-function mt.__index:undo()
+function mt.__index:undo(n)
+	n = n or #self.history
+	if not self.history[n] then lib.error("undo point not found") end
+	while #self.history > n do table.remove(self.history) end
 	local h = table.remove(self.history)
-	if not h then lib.error("no undo point found") end
 	for k, v in pairs(h) do self[k] = v end
 end
 
@@ -226,6 +228,7 @@ function mt.__index:undo_point()
 		curr = {},
 		next = {},
 		modified = self.modified,
+		__cmd = self.state.curr_cmd,
 	}
 	for i, v in ipairs(self.prev) do state.prev[i] = lib.dup(v) end
 	for i, v in ipairs(self.curr) do state.curr[i] = lib.dup(v) end

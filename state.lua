@@ -87,7 +87,9 @@ function mt.__index:cmd(s)
 		lib.error("could not parse: " .. s)
 	end
 
-	return cmd0(s)
+	self.curr_cmd = s
+	cmd0(s)
+	self.curr_cmd = nil
 end
 
 function mt.__index:load(path)
@@ -150,6 +152,7 @@ function mt.__index:path_resolve(s)
 end
 
 function mt.__index:pick(choices)
+	print("Select an option using the arrow keys.")
 	return lib.readline(">> ", choices)
 end
 

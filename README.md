@@ -86,6 +86,7 @@ For a complete overview of commands, including those installed by plugins, use t
 - `qq`: quit editor
 - `QQ`: quit editor even if files are modified
 - `u`: undo
+- `U`: undo via command history
 - `w`: write changes
 - `w <path>`: write changes th specified file
 - `wq`: write changes, then close file

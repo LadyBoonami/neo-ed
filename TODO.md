@@ -3,7 +3,6 @@
 - trim
 - autosave
 - tutorial
-- undo history as `U` using a picker
 
 # Other
 
