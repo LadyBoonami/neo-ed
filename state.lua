@@ -12,30 +12,30 @@ function mt.__index:closed()
 end
 
 function mt.__index:cmd(s)
+	local sel_a = self.curr:sel_first()
+	local sel_b = self.curr:sel_last ()
+
 	local function file0(f, m)
 		f(m)
 	end
 
 	local function local1(f, m, a)
-		a = a - #self.curr.prev
-		assert(0 <= a and a <= #self.curr.curr, #self.curr.prev .. " <= " .. (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + #self.curr.curr))
+		if not (sel_a - 1 <= a and a <= sel_b) then lib.error(a .. " not in range [" .. sel_a - 1 .. ", " .. sel_b .. "]") end
 		f(m, a)
 	end
 
 	local function local2(f, m, a, b)
-		a = a and a - #self.curr.prev or 1
-		b = b and b - #self.curr.prev or #self.curr.curr
-		assert(0 <= a and a <= #self.curr.curr,  #self.curr.prev      .. " <= " .. (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + #self.curr.curr))
-		assert(a <= b and b <= #self.curr.curr, (#self.curr.prev + a) .. " <= " .. (#self.curr.prev + b) .. " <= " .. (#self.curr.prev + #self.curr.curr))
+		if not (sel_a - 1 <= a and a <= sel_b) then lib.error(a .. " not in range [" .. sel_a - 1 .. ", " .. sel_b .. "]") end
+		if not (        a <= b and b <= sel_b) then lib.error(b .. " not in range [" ..     a     .. ", " .. sel_b .. "]") end
 		f(m, a, b)
 	end
 
 	local function global2(f, m, a, b)
-		local n = #self.curr.prev + #self.curr.curr + #self.curr.next
+		local n = self.curr:length()
 		a = a or 1
 		b = b or n
-		assert(0 <= a and a <= n,     "0 <= " .. a .. " <= " .. n)
-		assert(a <= b and b <= n, a .. " <= " .. b .. " <= " .. n)
+		if not (0 <= a and a <= n) then lib.error(a .. " not in range [" .. 0 .. ", " .. n .. "]") end
+		if not (a <= b and b <= n) then lib.error(b .. " not in range [" .. a .. ", " .. n .. "]") end
 		f(m, a, b)
 	end
 
@@ -43,8 +43,8 @@ function mt.__index:cmd(s)
 		local b_, s_ = lib.match(s, self.cmds.addr.cont, function() end, nil, b)
 		if b_ then return cmd2(a, b_, s_) end
 
-		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, b) then return end
-		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, b) then return end
+		if not lib.match(s, self.cmds.range_global  , function() return true end, global2, a, b) then return end
+		if not lib.match(s, self.cmds.range_local   , function() return true end, local2 , a, b) then return end
 		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, b) then return end
 
 		lib.error("could not parse: " .. s)
@@ -64,10 +64,10 @@ function mt.__index:cmd(s)
 		local s_ = s:match("^;(.*)$")
 		if s_ then return cmd2(a, a, s_) end
 
-		if not lib.match(s, self.cmds.range_global, function() return true end, global2, a, a) then return end
-		if not lib.match(s, self.cmds.range_local, function() return true end, local2, a, a) then return end
+		if not lib.match(s, self.cmds.range_global  , function() return true end, global2, a, a) then return end
+		if not lib.match(s, self.cmds.range_local   , function() return true end, local2 , a, a) then return end
 		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, a, a) then return end
-		if not lib.match(s, self.cmds.line, function() return true end, local1, a) then return end
+		if not lib.match(s, self.cmds.line          , function() return true end, local1 , a   ) then return end
 
 		lib.error("could not parse: " .. s)
 	end
@@ -78,11 +78,11 @@ function mt.__index:cmd(s)
 
 		if s:find("^,(.*)$") then return cmd1(nil, s) end
 
-		if not lib.match(s, self.cmds.file, function() return true end, file0) then return end
-		if not lib.match(s, self.cmds.range_global, function() return true end, global2, 1, #self.curr.prev + #self.curr.curr + #self.curr.next) then return end
-		if not lib.match(s, self.cmds.range_local, function() return true end, local2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
-		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, #self.curr.prev + 1, #self.curr.prev + #self.curr.curr) then return end
-		if not lib.match(s, self.cmds.line, function() return true end, local1, #self.curr.prev + #self.curr.curr) then return end
+		if not lib.match(s, self.cmds.file          , function() return true end, file0                                       ) then return end
+		if not lib.match(s, self.cmds.range_global  , function() return true end, global2, 1              , self.curr:length()) then return end
+		if not lib.match(s, self.cmds.range_local   , function() return true end, local2 , sel_a          , sel_b             ) then return end
+		if not lib.match(s, self.cmds.range_local_ro, function() return true end, global2, sel_a          , sel_b             ) then return end
+		if not lib.match(s, self.cmds.line          , function() return true end, local1 , self.curr:pos()                    ) then return end
 
 		lib.error("could not parse: " .. s)
 	end
@@ -114,7 +114,7 @@ function mt.__index:main()
 				f.conf.mode,
 				f.conf.charset,
 				f.conf.crlf and " (DOS line endings)" or "",
-				#f.prev + #f.curr + #f.next,
+				f:length(),
 				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 			))
 		end

@@ -5,6 +5,13 @@ local mt = {
 	__index = {},
 }
 
+-- Buffer element fields:
+--  - text: line contents
+--  - prev: previous element, if not after current buffer position
+--  - next: next element, if not before current buffer position
+--  - nprev: number of elements before this, if not after current buffer position
+--  - nnext: number of elements after this, if not before current buffer position
+
 function mt.__index:addr(s, loc)
 	local function cont(a, s)
 		local a_, s_ = lib.match(s, self.state.cmds.addr.cont, function() end, nil, a)
@@ -17,8 +24,9 @@ function mt.__index:addr(s, loc)
 	if a then
 		a = cont(a, s_)
 		if loc then
-			a = a - #self.prev
-			assert(0 <= a and a <= #self.curr, #self.prev .. " <= " .. (#self.prev + a) .. " <= " .. (#self.prev + #self.curr))
+			local sel_a = self.curr:sel_first()
+			local sel_b = self.curr:sel_last ()
+			if not (sel_a <= a and a <= sel_b) then lib.error(a .. " not in range [" .. sel_a .. ", " .. sel_b .. "]") end
 		end
 		return a
 	end
@@ -26,11 +34,15 @@ function mt.__index:addr(s, loc)
 end
 
 function mt.__index:all()
-	local ret = {}
-	self:map(function(_, l) table.insert(ret, lib.dup(l)) end)
-	return ret
+	return self:extract()
 end
 
+function mt.__index:append(lines, pos)
+	if pos then self:seek(pos) end
+	for _, l in ipairs(lines) do self:insert(l) end
+end
+
+-- Create an undo point, then apply function `f` that changes the buffer. If `f` fails, roll back the changes.
 function mt.__index:change(f)
 	if self._changing then f() else
 		self._changing = true
@@ -45,6 +57,7 @@ function mt.__index:change(f)
 	end
 end
 
+-- Close the buffer. Fail if modified since last save and `force` is not set.
 function mt.__index:close(force)
 	if self.modified and not force then lib.error("buffer modified") end
 	lib.hook(self.state.hooks.close, self)
@@ -52,12 +65,36 @@ function mt.__index:close(force)
 	self.state:closed()
 end
 
-function mt.__index:curr_first()
-	return #self.prev + 1
-end
+-- Delete the current element, making the next (or alternatively previous) element the new buffer position.
+function mt.__index:delete()
+	if self.curr.nprev == -1 then lib.error("cannot delete index 0") end
 
-function mt.__index:curr_last()
-	return #self.prev + #self.curr
+	local ret = lib.dup(self.curr)
+
+	if self.curr.next then
+		local tmp = lib.dup(self.curr.next)
+		tmp.prev  = self.curr.prev
+		tmp.nprev = self.curr.nprev
+		self.curr = tmp
+
+	elseif self.curr.prev then
+		local tmp = lib.dup(self.curr.prev)
+		tmp.next  = self.curr.next
+		tmp.nnext = self.curr.nnext
+		self.curr = tmp
+
+	else
+		self.curr = false
+
+	end
+
+	ret.prev  = nil
+	ret.next  = nil
+	ret.nprev = nil
+	ret.nnext = nil
+	ret.hide  = nil
+
+	return ret
 end
 
 function mt.__index:diff()
@@ -69,8 +106,8 @@ function mt.__index:diff()
 	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
 	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
 	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
-	for _, l in ipairs(self.history[#self.history].curr) do posix.unistd.write(ha, l.text); posix.unistd.write(ha, "\n") end
-	for _, l in ipairs(self.curr                       ) do posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end
+	self:inspect(function(_, l) posix.unistd.write(ha, l.text); posix.unistd.write(ha, "\n") end, nil, nil, self.history[#self.history].curr)
+	self:inspect(function(_, l) posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end                                            )
 	posix.unistd.close(ha)
 	posix.unistd.close(hb)
 
@@ -80,25 +117,26 @@ function mt.__index:diff()
 	posix.unistd.unlink(pb)
 end
 
-function mt.__index:extract(a, b)
-	local ret = {}
-	table.move(self.curr, a, b, 1, ret)
-	table.move(self.curr, b+1, #self.curr, a)
-	for i = 1, b - a + 1 do table.remove(self.curr) end
-	return ret
+function mt.__index:drop(first, last)
+	self:seek(last )
+	self:seek(first)
+	for _ = first, last do self:delete() end
 end
 
-function mt.__index:focus(first, last)
-	local tmp = self:all()
+function mt.__index:extract(first, last)
+	first = first or 1
+	last  = last  or self:length()
 
-	self.prev = {}
-	self.curr = {}
-	self.next = {}
-
-	for i, l in ipairs(tmp) do
-		local t = (i < first) and self.prev or (i <= last) and self.curr or self.next
-		table.insert(t, l)
-	end
+	local ret = {}
+	self:inspect(function(_, l)
+		local tmp = lib.dup(l)
+		tmp.prev  = nil
+		tmp.next  = nil
+		tmp.nprev = nil
+		tmp.nnext = nil
+		table.insert(ret, tmp)
+	end, first, last)
+	return ret
 end
 
 function mt.__index:get_input(ac)
@@ -109,32 +147,122 @@ function mt.__index:get_input(ac)
 	return ret
 end
 
-function mt.__index:insert(a, tbl)
-	table.move(self.curr, a + 1, #self.curr, a + 1 + #tbl)
-	for i, l in ipairs(tbl) do self.curr[a + i] = l end
+-- Insert the given element after the current buffer position, making it the new buffer position.
+function mt.__index:insert(elem)
+	elem = lib.dup(elem)
+
+	local prev = lib.dup(self.curr)
+	elem.prev  = prev
+	elem.next  = prev.next
+	elem.nprev = prev.nprev + 1
+	elem.nnext = prev.nnext
+	prev.next  = nil
+	prev.nnext = nil
+	self.curr  = elem
 end
 
+-- Apply a function to each line number and corresponding element. THIS FUNCTION MAY NOT CHANGE THE ELEMENT!
+function mt.__index:inspect(f, first, last, elem)
+	if not first then first = 1             end
+	if not last  then last  = self:length() end
+	if not elem  then elem  = self.curr     end
+
+	local function head(elem)
+		if elem then
+			head(elem.prev)
+			local n = elem.nprev + 1
+			if first <= n and n <= last then f(elem.nprev + 1, elem) end
+		end
+	end
+
+	local function tail(elem, n)
+		if elem then
+			if first <= n and n <= last then f(n, elem) end
+			tail(elem.next, n + 1)
+		end
+	end
+
+	head(elem.prev)
+	if first <= elem.nprev + 1 and elem.nprev + 1 <= last then f(elem.nprev + 1, elem) end
+	tail(elem.next, elem.nprev + 2)
+end
+
+-- Apply a function to each line number and corresponding element in reverse order. THIS FUNCTION MAY NOT CHANGE THE ELEMENT!
+function mt.__index:inspect_r(f, first, last, elem)
+	if not first then first = self:length() end
+	if not last  then last  = 1             end
+	if not elem  then elem  = self.curr     end
+
+	local function head(elem)
+		if elem then
+			local n = elem.nprev + 1
+			if first >= n and n >= last then f(elem.nprev + 1, elem) end
+			head(elem.prev)
+		end
+	end
+
+	local function tail(elem, n)
+		if elem then
+			tail(elem.next, n + 1)
+			if first >= n and n >= last then f(n, elem) end
+		end
+	end
+
+	tail(elem.next, elem.nprev + 2)
+	if first >= elem.nprev + 1 and elem.nprev + 1 >= last then f(elem.nprev + 1, elem) end
+	head(elem.prev)
+end
+
+-- Return the total number of lines in the buffer.
 function mt.__index:length()
-	return #self.prev + #self.curr + #self.next
+	return self.curr.nprev + 1 + self.curr.nnext
 end
 
-function mt.__index:map(f)
-	for i, l in ipairs(self.prev) do local ret = f(                          i, l); if ret ~= nil then return ret end end
-	for i, l in ipairs(self.curr) do local ret = f(#self.prev +              i, l); if ret ~= nil then return ret end end
-	for i, l in ipairs(self.next) do local ret = f(#self.prev + #self.curr + i, l); if ret ~= nil then return ret end end
+function mt.__index:map(f, first, last)
+	if not first then first = 1             end
+	if not last  then last  = self:length() end
+
+	if not (1 <= first and first <= self:length()) then lib.error(first .. " not in range [1, " .. self:length() .. "]") end
+	if not (1 <= last  and last  <= self:length()) then lib.error(last  .. " not in range [1, " .. self:length() .. "]") end
+
+	if first > last then return end
+
+	local function head(elem)
+		if elem and first <= elem.nprev + 1 then
+			local prev = head(elem.prev)
+			elem = lib.dup(elem)
+			elem.prev = prev
+			if elem.nprev + 1 <= last then f(elem.nprev + 1, elem) end
+		end
+		return elem
+	end
+
+	local function tail(elem, n)
+		if elem and n <= last then
+			local next = tail(elem.next, n + 1)
+			elem = lib.dup(elem)
+			elem.next = next
+			if first <= n then f(n, elem) end
+		end
+		return elem
+	end
+
+	self.curr = lib.dup(self.curr)
+	self.curr.prev = head(self.curr.prev)
+	self.curr.next = tail(self.curr.next, self.curr.nprev + 2)
+	if first <= self.curr.nprev + 1 and self.curr.nprev + 1 <= last then f(self.curr.nprev + 1, self.curr) end
 end
 
-function mt.__index:rmap(f)
-	for i = #self.next, 1, -1 do local ret = f(#self.prev + #self.curr + i, self.next[i]); if ret ~= nil then return ret end end
-	for i = #self.curr, 1, -1 do local ret = f(#self.prev +              i, self.curr[i]); if ret ~= nil then return ret end end
-	for i = #self.prev, 1, -1 do local ret = f(                          i, self.prev[i]); if ret ~= nil then return ret end end
+function mt.__index:modify(f, pos)
+	pos = pos or self:pos()
+	self:map(f, pos, pos)
 end
 
 -- TODO: can this be done without cloning the entire buffer?
 function mt.__index:print(lines)
 	if not lines then
 		lines = {}
-		for i = 1, #self.curr do lines[#self.prev + i] = true end
+		for i = self:sel_first(), self:sel_last() do lines[i] = true end
 	end
 
 	local all = self:all()
@@ -162,15 +290,16 @@ function mt.__index:print(lines)
 
 	local w = #tostring(#all)
 	for i, l in ipairs(all) do
-		if lines[i] then io.stdout:write(("\x1b[33m%" .. tostring(w) .. "d│\x1b[0m%s\n"):format(i, l.text)) end
+		if lines[i] then
+			io.stdout:write(("\x1b[%sm%" .. tostring(w) .. "d\x1b[0;33m│\x1b[0m%s\n"):format(i == self:pos() and "43;30" or "33", i, l.text))
+		end
 	end
 
 	lib.hook(self.state.hooks.print_post, self, all, lines)
 end
 
-function mt.__index:replace(a, b, tbl)
-	self:extract(a, b)
-	self:insert(a - 1, tbl)
+function mt.__index:pos()
+	return self.curr.nprev + 1
 end
 
 function mt.__index:save(path)
@@ -183,7 +312,7 @@ function mt.__index:save(path)
 	end
 
 	local s = {}
-	self:map(function(_, l) table.insert(s, l.text) end)
+	self:inspect(function(n, l) table.insert(s, l.text) end)
 	if self.conf.end_nl then table.insert(s, "") end
 	s = table.concat(s, "\n")
 	for i = #self.state.filters.write, 1, -1 do s = self.state.filters.write[i](s, self) end
@@ -198,6 +327,75 @@ function mt.__index:save(path)
 	for _, v in ipairs(self.history) do v.modified = true end
 
 	lib.hook(self.state.hooks.save_post, self)
+end
+
+function mt.__index:scan(f, first, last)
+	first = first or 1
+	last  = last  or self:length()
+
+	local ret = nil
+	self:inspect(function(n, l) if ret == nil then ret = f(n, l) end end, first, last)
+	return ret
+end
+
+function mt.__index:scan_r(f, first, last)
+	first = first or self:length()
+	last  = last  or 1
+
+	local ret = nil
+	self:inspect_r(function(n, l) if ret == nil then ret = f(n, l) end end, first, last)
+	return ret
+end
+
+function mt.__index:seek(n)
+	if not (0 <= n and n <= self:length()) then lib.error("seek out of range: " .. n .. " not in [0, " .. self:length() .. "]") end
+
+	while n > self:pos() and self.curr.next do
+		local prev = lib.dup(self.curr     )
+		local curr = lib.dup(self.curr.next)
+
+		curr.prev  = prev
+		curr.nprev = prev.nprev + 1
+		curr.hide  = nil
+
+		prev.next  = nil
+		prev.nnext = nil
+
+		self.curr = curr
+	end
+
+	while n < self:pos() and self.curr.prev do
+		local next = lib.dup(self.curr     )
+		local curr = lib.dup(self.curr.prev)
+
+		curr.next  = next
+		curr.nnext = next.nnext + 1
+		curr.hide  = nil
+
+		next.prev  = nil
+		next.nprev = nil
+
+		self.curr = curr
+	end
+end
+
+function mt.__index:select(first, last)
+	local oldfirst = self:sel_first()
+	local oldlast  = self:sel_last ()
+	self:seek(last)
+	self:map(
+		function(n, l) l.hide = not (first <= n and n <= last) end,
+		math.min(oldfirst, first),
+		math.max(oldlast , last )
+	)
+end
+
+function mt.__index:sel_first()
+	return self:scan(function(n, l) return not l.hide and n or nil end) or 1
+end
+
+function mt.__index:sel_last()
+	return self:scan_r(function(n, l) return not l.hide and n or nil end) or self:length()
 end
 
 function mt.__index:set_path(path)
@@ -224,15 +422,10 @@ end
 
 function mt.__index:undo_point()
 	local state = {
-		prev = {},
-		curr = {},
-		next = {},
+		curr     = self.curr,
 		modified = self.modified,
-		__cmd = self.state.curr_cmd,
+		__cmd    = self.state.curr_cmd,
 	}
-	for i, v in ipairs(self.prev) do state.prev[i] = lib.dup(v) end
-	for i, v in ipairs(self.curr) do state.curr[i] = lib.dup(v) end
-	for i, v in ipairs(self.next) do state.next[i] = lib.dup(v) end
 
 	lib.hook(self.state.hooks.undo_point, self, state)
 	table.insert(self.history, state)
@@ -241,9 +434,7 @@ end
 
 return function(state, path)
 	local ret = setmetatable({}, mt)
-	ret.prev = {}
-	ret.curr = {}
-	ret.next = {}
+	ret.curr = {nprev = -1, nnext = 0}
 
 	ret.state = state
 
@@ -271,11 +462,16 @@ return function(state, path)
 		)
 
 		for _, f in ipairs(ret.state.filters.read) do s = f(s, ret) end
-		for l in s:gmatch("[^\n]*") do table.insert(ret.curr, {text = l}) end
-		if ret.curr[#ret.curr].text == "" then table.remove(ret.curr) end
+		for l in s:gmatch("[^\n]*") do ret:insert({text = l}) end
+		if ret.curr.text == "" then ret:delete() end
 	end
 
 	lib.hook(ret.state.hooks.load_post, ret)
 
 	return ret
 end
+
+----------------------------------------------------------------------------------------------------
+--[[
+
+]]
