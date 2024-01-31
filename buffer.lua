@@ -163,9 +163,9 @@ end
 
 -- Apply a function to each line number and corresponding element. THIS FUNCTION MAY NOT CHANGE THE ELEMENT!
 function mt.__index:inspect(f, first, last, elem)
-	if not first then first = 1             end
-	if not last  then last  = self:length() end
-	if not elem  then elem  = self.curr     end
+	if not first then first = 1         end
+	if not last  then last  = 1/0       end
+	if not elem  then elem  = self.curr end
 
 	local function head(elem)
 		if elem then
@@ -189,9 +189,9 @@ end
 
 -- Apply a function to each line number and corresponding element in reverse order. THIS FUNCTION MAY NOT CHANGE THE ELEMENT!
 function mt.__index:inspect_r(f, first, last, elem)
-	if not first then first = self:length() end
-	if not last  then last  = 1             end
-	if not elem  then elem  = self.curr     end
+	if not first then first = 1/0       end
+	if not last  then last  = 1         end
+	if not elem  then elem  = self.curr end
 
 	local function head(elem)
 		if elem then
