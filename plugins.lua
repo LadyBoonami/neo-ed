@@ -67,6 +67,16 @@ function m.core_editing(state)
 		state.curr:print()
 	end, "select (\"focus\") lines"})
 
+	table.insert(state.cmds.line, {"^F(%d*)$", function(m, a)
+		local w = nil
+		if m[1] ~= "" then w = tonumber(m[1]) end
+		if not w and os.execute("which tput >/dev/null 2>&1") then w = (tonumber(lib.pipe("tput lines", "")) - 3 - #state.files) // 2 end
+		if not w then w = 10 end
+		state.curr:select(math.max(1, a - w), math.min(a + w, state.curr:length()))
+		state.curr:seek(a)
+		state.curr:print()
+	end, "Mark line as current and focus lines around"})
+
 --[[
 	-- TODO: do this in order
 	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
@@ -94,7 +104,8 @@ function m.core_editing(state)
 
 	table.insert(state.cmds.range_local, {"^j$", function(m, a, b)
 		state.curr:change(function(buf)
-			local tmp = buf:extract(a, b)
+			local tmp = {}
+			buf:inspect(function(_, l) table.insert(tmp, l.text) end, a, b)
 			buf:drop(a, b)
 			buf:seek(a - 1)
 			buf:insert({text = table.concat(tmp, "")})
