@@ -344,7 +344,7 @@ function m.align(state)
 			buf:map(function(_, l)
 				local bytes = lib.find_nth(l.text, m[2], n)
 				if bytes then
-					buf.curr[i].text = l.text:sub(1, bytes - 1)
+					l.text = l.text:sub(1, bytes - 1)
 						.. (" "):rep(max - utf8.len(l.text:sub(1, bytes - 1)))
 						.. l.text:sub(bytes)
 				end
