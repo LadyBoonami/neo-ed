@@ -2,6 +2,7 @@
 
 - Test everything
 - Fix global command
+- Fix diff showing random stuff at the end of the file
 
 # Plugin ideas
 
@@ -12,7 +13,6 @@
 # Other
 
 - Rework implicit addressing
-- Rework focus command(s) (f = place cursor and focus according to screen, F = place focus explicitly)
 - API documentation
 - Don't write file diff to disk on every change
 - Implement `l` properly (not as an alias for default print)

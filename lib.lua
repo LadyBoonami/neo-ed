@@ -57,15 +57,16 @@ function m.id(...)
 	return ...
 end
 
-function m.match(s, tbl, def, wrap, ...)
-	def  = def  or function(s) m.error("could not parse: " .. s) end
-	wrap = wrap or function(f, ...) return f(...) end
+function m.match(args)
+	args.args = args.args or {}
+	args.def  = args.def  or function(s) m.error("could not parse: " .. s) end
+	args.wrap = args.wrap or function(f, ...) return f(...) end
 
-	for _, v in ipairs(tbl) do
-		local r = {s:match(v[1])}
-		if r[1] then return wrap(v[2], r, ...) end
+	for _, v in ipairs(args.choose) do
+		local r = {args.s:match(v[1])}
+		if r[1] then return args.wrap(v[2], r, table.unpack(args.args)) end
 	end
-	return def(s, ...)
+	return args.def(args.s, table.unpack(args.args))
 end
 
 function m.patesc(s)

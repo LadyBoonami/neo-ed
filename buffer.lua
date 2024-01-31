@@ -14,18 +14,18 @@ local mt = {
 
 function mt.__index:addr(s, loc)
 	local function cont(a, s)
-		local a_, s_ = lib.match(s, self.state.cmds.addr.cont, function() end, nil, a)
+		local a_, s_ = lib.match{s = s, choose = self.state.cmds.addr.cont, def = function() end, args = {a}}
 		if a_ then return cont(a_, s_) end
 		if s == "" then return a end
 		lib.error("could not parse: " .. s)
 	end
 
-	local a, s_ = lib.match(s, self.state.cmds.addr.prim, function() end, nil)
+	local a, s_ = lib.match{s = s, choose = self.state.cmds.addr.prim, def = function() end}
 	if a then
 		a = cont(a, s_)
 		if loc then
-			local sel_a = self.curr:sel_first()
-			local sel_b = self.curr:sel_last ()
+			local sel_a = self:sel_first()
+			local sel_b = self:sel_last ()
 			if not (sel_a <= a and a <= sel_b) then lib.error(a .. " not in range [" .. sel_a .. ", " .. sel_b .. "]") end
 		end
 		return a
@@ -317,11 +317,11 @@ function mt.__index:save(path)
 	s = table.concat(s, "\n")
 	for i = #self.state.filters.write, 1, -1 do s = self.state.filters.write[i](s, self) end
 
-	lib.match(self.path, self.state.protocols,
-		function(p, s) local h <close> = io.open(p, "w"); h:write(s) end,
-		function(t, p, s) t.write(p, s) end,
-		s
-	)
+	lib.match{s = self.path, choose = self.state.protocols,
+		def = function(p, s) local h <close> = io.open(p, "w"); h:write(s) end,
+		wrap = function(t, p, s) t.write(p, s) end,
+		args = {s}
+	}
 
 	self.modified = false
 	for _, v in ipairs(self.history) do v.modified = true end
@@ -456,10 +456,10 @@ return function(state, path)
 	lib.hook(ret.state.hooks.load_pre, ret)
 
 	if path then
-		local s = lib.match(ret.path, state.protocols,
-			function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
-			function(t, p) return t.read(p) end
-		)
+		local s = lib.match{s = ret.path, choose = state.protocols,
+			def = function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
+			wrap = function(t, p) return t.read(p) end
+		}
 
 		for _, f in ipairs(ret.state.filters.read) do s = f(s, ret) end
 		for l in s:gmatch("[^\n]*") do ret:insert({text = l}) end

@@ -56,7 +56,7 @@ function m.core_editing(state)
 		end)
 	end, "change line"})
 
-	table.insert(state.cmds.range_local, {"^d$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^d$", function(m, a, b)
 		state.curr:change(function(buf)
 			buf:drop(a, b)
 		end)
@@ -112,7 +112,7 @@ function m.core_editing(state)
 		end)
 	end, "join lines"})
 
-	table.insert(state.cmds.range_local, {"^J(.)(.*)%1$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^J(.)(.*)%1$", function(m, a, b)
 		state.curr:change(function(buf)
 			local new = {}
 			buf:inspect(function(_, l)
@@ -123,7 +123,7 @@ function m.core_editing(state)
 		end)
 	end, "split lines on pattern"})
 
-	table.insert(state.cmds.range_local, {"^m(.*)$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^m(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local dst = buf:addr(m[1], true)
 			if dst > b then dst = dst - (b - a + 1)
@@ -145,8 +145,9 @@ function m.core_editing(state)
 		end)
 	end, "append text from file / command after"})
 
-	table.insert(state.cmds.range_local, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
 		state.curr:change(function(buf)
+			buf:seek(b)
 			buf:map(function(_, l)
 				if m[4]:find("g") then
 					l.text = l.text:gsub(m[2], m[3])
@@ -162,7 +163,7 @@ function m.core_editing(state)
 		end)
 	end, "substitute text using Lua gsub"})
 
-	table.insert(state.cmds.range_local, {"^t(.*)$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^t(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local dst = buf:addr(m[1], true)
 			buf:append(buf:extract(a, b), dst)
@@ -182,14 +183,14 @@ function m.core_help(state)
 		print("Address modifiers:")
 		f(state.cmds.addr.cont, true)
 
-		print("Single line commands (prefixed by a single address, defaults to end of selection)")
+		print("Single line commands (prefixed by a single address, defaults to current line)")
 		f(state.cmds.line)
 
+		print("Single line range commands (prefixed by two addresses, defaults to current line only)")
+		f(state.cmds.range_line)
+
 		print("Local range commands (prefixed by up to two addresses, default to the current selection)")
-		local t = {}
-		for _, v in ipairs(state.cmds.range_local   ) do table.insert(t, v) end
-		for _, v in ipairs(state.cmds.range_local_ro) do table.insert(t, v) end
-		f(t)
+		f(state.cmds.range_local)
 
 		print("Global range commands (prefixed by up to two addresses, defaults to the entire file)")
 		f(state.cmds.range_global)
@@ -270,21 +271,21 @@ function m.core_marks(state)
 end
 
 function m.core_print(state)
-	table.insert(state.cmds.range_local_ro, {"^$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^$", function(m, a, b)
 		state:cmd(tostring(a) .. "," .. tostring(b) .. "l")
 	end, "print code listing (alias for `l` command)"})
 
-	table.insert(state.cmds.range_local_ro, {"^l$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^l$", function(m, a, b)
 		local lines = {}
 		for i = a, b do lines[i] = true end
 		state.curr:print(lines)
 	end, "print code listing (use the print pipeline)"})
 
-	table.insert(state.cmds.range_local_ro, {"^n$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^n$", function(m, a, b)
 		state.curr:inspect(function(n, l) print(n, l.text) end, a, b)
 	end, "print lines with line numbers"})
 
-	table.insert(state.cmds.range_local_ro, {"^p$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^p$", function(m, a, b)
 		state.curr:inspect(function(n, l) print(l.text) end, a, b)
 	end, "print raw lines"})
 
@@ -418,12 +419,12 @@ function m.clipboard(state)
 
 	end
 
-	table.insert(state.cmds.range_local, {"^C$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^C$", function(m, a, b)
 		local h <close> = io.popen(copy_cmd, "w")
 		state.curr:inspect(function(_, l) h:write(l.text, "\n") end, a, b)
 	end, "copy lines"})
 
-	table.insert(state.cmds.range_local, {"^X$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^X$", function(m, a, b)
 		state.curr:change(function(buf)
 			local h <close> = io.popen(copy_cmd, "w")
 			buf:inspect(function(_, l) h:write(l.text, "\n") end, a, b)
@@ -491,7 +492,7 @@ function m.shell(state)
 		if not ok then print(how .. " " .. no) end
 	end, "execute shell command"})
 
-	table.insert(state.cmds.range_local, {"^|(.+)$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^|(.+)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local tmp = {}
 			buf:inspect(function(_, l) table.insert(tmp, l.text) end, a, b)
