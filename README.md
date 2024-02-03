@@ -40,6 +40,12 @@ Commands take up to two addresses.
 The address(es) are written directly before the command they affect.
 Each address may be specified using exactly one line address, followed by any number of offset modifiers.
 
+Like the original `ed`, `neo-ed` always has a "current" line.
+Most commands change that "current" line to the last line they modified.
+Unlike `ed`, `neo-ed` also has the concept of the current selection.
+This is a range of lines that always contains the current line.
+An empty command styles and prints this selection, and the `f` and `F` commands can be used to place it.
+
 ### Line Addresses
 
 - A number stands for the line with that number.
@@ -77,20 +83,20 @@ For a complete overview of commands, including those installed by plugins, use t
 
 ### File
 
-- `h`: show command help
-- `e <path>`: open specified file
-- `q`: close file
-- `Q`: close file even if modified
-- `qq`: quit editor
-- `QQ`: quit editor even if files are modified
-- `u`: undo
-- `U`: undo via command history
-- `w`: write changes
-- `w <path>`: write changes th specified file
-- `wq`: write changes, then close file
-- `wqq`: write changes, then quit editor
-- `#<n>`: switch to open file no. `<n>`
-- `!<command>`: execute shell command `<command>`
+- `h`: show command help.
+- `e <path>`: open specified file.
+- `q`: close file.
+- `Q`: close file even if modified.
+- `qq`: quit editor.
+- `QQ`: quit editor even if files are modified.
+- `u`: undo.
+- `U`: undo via command history.
+- `w`: write changes.
+- `w <path>`: write changes th specified file.
+- `wq`: write changes, then close file.
+- `wqq`: write changes, then quit editor.
+- `#<n>`: switch to open file no. `<n>`.
+- `!<cmd>`: execute shell command `<cmd>`.
 
 Each file path can be a directory path prefixed by a `@` symbol to open a file picker there.
 
@@ -112,28 +118,33 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `r !<command>`: insert output of command after the selected line.
 - `V`: paste lines from the clipboard after the selected line.
 
-### Local Range
+### Line Range
 
-- `d`: delete the selected lines
-- `j`: join the selected lines
-- `J<sep><pattern><sep>`: split the line on each match of lua pattern `<pattern>`.
+- `d`: delete the selected lines.
+- `J<sep><pattern><sep>`: split the line(s) on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
 - `m<addr>`: move selected lines after `<addr>`.
-  `<addr>` must be outside the range of selected lines.
 - `s<sep><pattern><sep><replacement><sep><mode>`: in the selected lines, replace lua pattern `<pattern>` with `<replacement>`.
   `<sep>` may be any punctuation character (usually `/`).
   Only replaces the first occurence by default.
   If `<mode>` is `g`, replaces all occurences.
   If `<mode>` is a number, replace that occurence.
 - `t<addr>`: copy (transfer) selected lines after `<addr>`.
+- `l`: style and print lines.
+- `n`: print code prefixed with line numbers.
+- `p`: print code raw.
+- `C`: copy line(s) to clipboard.
+- `X`: cut line(s) to clipboard.
+- `|<cmd>`: pipe lines through shell command `<cmd>`.
+
+### Local Range
+
+- (empty command): style and print lines.
+- `j`: join the selected lines
 
 ### Global Range
 
-- (empty command): alias for `l`
 - `f`: select ("focus") the specified lines
-- `l`: print code listing using formatting pipeline
-- `n`: print code prefixed with line numbers
-- `p`: print code raw
 - `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
 - `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
