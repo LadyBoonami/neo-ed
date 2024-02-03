@@ -77,19 +77,24 @@ function m.core_editing(state)
 		state.curr:print()
 	end, "Mark line as current and focus lines around"})
 
---[[
-	-- TODO: do this in order
 	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
-			for i = b, a, -1 do
-				if m[1] == "g" and     buf.curr[i].text:find(m[3])
-				or m[1] == "v" and not buf.curr[i].text:find(m[3]) then
-					state:cmd(tostring(#buf.prev + i) .. m[4])
+			buf:map(function(_, l)
+				if m[1] == "g" and     l.text:find(m[3])
+				or m[1] == "v" and not l.text:find(m[3]) then
+					l.g_mark = true
 				end
+			end)
+			buf:seek(1)
+			while true do
+				local pos = buf:scan(function(n, l) return l.g_mark and n or nil end, buf:pos())
+				if not pos then break end
+				buf:seek(pos)
+				buf:modify(function(n, l) l.g_mark = nil end)
+				state:cmd(m[4])
 			end
 		end)
 	end, "perform command on every (non-)matching line"})
-]]
 
 	table.insert(state.cmds.line, {"^i$", function(m, a)
 		state.curr:change(function(buf)

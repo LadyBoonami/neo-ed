@@ -1,8 +1,3 @@
-# Necessary Fixes
-
-- Test everything
-- Fix global command
-
 # Plugin ideas
 
 - trim
