@@ -44,7 +44,7 @@ end
 
 -- Create an undo point, then apply function `f` that changes the buffer. If `f` fails, roll back the changes.
 function mt.__index:change(f)
-	if self._changing then f() else
+	if self._changing then f(self) else
 		self._changing = true
 		self:undo_point()
 		local ok, err = xpcall(f, lib.traceback, self)

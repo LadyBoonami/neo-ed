@@ -22,19 +22,16 @@ Put this repository into your `LUA_PATH`, and symlink `main.lua` as `ned` into y
 - **File** commands affect the entire file, or the global state of the editor.
   They do not take any addresses.
 
-- **Global range** commands run on a range of lines in the entire file.
+- **Global range** commands run on a range of lines.
   They take two addresses, and operate on every line from the first to the second addess, including them.
   If only one address is given, the second defaults to the first.
   If no address is given, the command executes on the entire file.
 
-- **Local range** commands run on a range of lines in the current selection.
-  They cannot access lines that are not currently selected.
-  They take two addresses, and operate on every line from the first to the second addess, including them.
-  If only one address is given, the second defaults to the first.
-  If no address is given, the command executes on the entire selection.
+- **Local range** commands work like global range commands, but default to the current selection if no address is given.
+
+- **Line range** commands work like global range commands, but default to only the current line if not address is given.
 
 - **Line** commands run on a single line in the current selection.
-  They cannot access lines that are not currently selected.
   If no address is given, the command executes on the last line of the selection.
 
 ## Addressing
@@ -46,9 +43,11 @@ Each address may be specified using exactly one line address, followed by any nu
 ### Line Addresses
 
 - A number stands for the line with that number.
+- `^^` stands for the first line of the file.
 - `^` stands for the first line of the current selection.
-- `.` stands for the last line of the current selection.
-- `$` stands for the last line in the file.
+- `.` stands for the current line.
+- `$` stands for the last line of the current selection.
+- `$$` stands for the last line in the file.
 - A lua pattern, delimited by a single punctuation character (usually `/`), stands for the first line in the file that matches that pattern.
 - `'` followed by a single lowercase letter stands for the first line marked with that letter.
 
@@ -80,7 +79,6 @@ For a complete overview of commands, including those installed by plugins, use t
 
 - `h`: show command help
 - `e <path>`: open specified file
-- `f <path>`: set file name
 - `q`: close file
 - `Q`: close file even if modified
 - `qq`: quit editor
@@ -92,6 +90,7 @@ For a complete overview of commands, including those installed by plugins, use t
 - `wq`: write changes, then close file
 - `wqq`: write changes, then quit editor
 - `#<n>`: switch to open file no. `<n>`
+- `!<command>`: execute shell command `<command>`
 
 Each file path can be a directory path prefixed by a `@` symbol to open a file picker there.
 
@@ -102,6 +101,8 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
   The command history (press Up) contains the indentation prefix of the previous line.
 - `c`: replace the selected line.
   The command history (press Up) contains the previous contents of the line, and the indentation prefix of the line.
+- `F<n>`: mark line as current line, and select the surrounding `<n>` lines.
+  Without `<n>`, the selection is derived from the terminal size.
 - `i`: start insert lines before the selected line.
   `Ctrl+D` to exit.
   The command history (press Up) contains the indentation prefix of the next line.
@@ -109,12 +110,11 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `k<x>` with some lowercase letter `<x>` marks the selected line with that letter.
 - `r <filename>`: insert contents of file after the selected line.
 - `r !<command>`: insert output of command after the selected line.
+- `V`: paste lines from the clipboard after the selected line.
 
 ### Local Range
 
 - `d`: delete the selected lines
-- `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
-  `<sep>` may be any punctuation character (usually `/`).
 - `j`: join the selected lines
 - `J<sep><pattern><sep>`: split the line on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
@@ -126,7 +126,6 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
   If `<mode>` is `g`, replaces all occurences.
   If `<mode>` is a number, replace that occurence.
 - `t<addr>`: copy (transfer) selected lines after `<addr>`.
-- `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
 
 ### Global Range
 
@@ -135,3 +134,6 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `l`: print code listing using formatting pipeline
 - `n`: print code prefixed with line numbers
 - `p`: print code raw
+- `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
+  `<sep>` may be any punctuation character (usually `/`).
+- `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
