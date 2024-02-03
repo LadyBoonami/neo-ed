@@ -69,10 +69,10 @@ function m.core_editing(state)
 
 	table.insert(state.cmds.line, {"^F(%d*)$", function(m, a)
 		local w = nil
-		if m[1] ~= "" then w = tonumber(m[1]) end
-		if not w and os.execute("which tput >/dev/null 2>&1") then w = (tonumber(lib.pipe("tput lines", "")) - 3 - #state.files) // 2 end
-		if not w then w = 10 end
-		state.curr:select(math.max(1, a - w), math.min(a + w, state.curr:length()))
+		if m[1] ~= "" then w = 2*tonumber(m[1]) end
+		if not w and os.execute("which tput >/dev/null 2>&1") then w = tonumber(lib.pipe("tput lines", "")) - 3 - #state.files end
+		if not w then w = 20 end
+		state.curr:select(math.max(1, a - (w // 2)), math.min(a + (w - w//2), state.curr:length()))
 		state.curr:seek(a)
 		state.curr:print()
 	end, "Mark line as current and focus lines around"})
