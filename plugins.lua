@@ -84,10 +84,10 @@ function m.core_editing(state)
 				or m[1] == "v" and not l.text:find(m[3]) then
 					l.g_mark = true
 				end
-			end)
-			buf:seek(1)
+			end, a, b)
+			buf:seek(a)
 			while true do
-				local pos = buf:scan(function(n, l) return l.g_mark and n or nil end, buf:pos())
+				local pos = buf:scan(function(n, l) return l.g_mark and n or nil end, buf:pos(), b)
 				if not pos then break end
 				buf:seek(pos)
 				buf:modify(function(n, l) l.g_mark = nil end)
