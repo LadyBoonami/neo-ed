@@ -77,7 +77,7 @@ function m.core_editing(state)
 		state.curr:print()
 	end, "Mark line as current and focus lines around"})
 
-	table.insert(state.cmds.range_local, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
+	table.insert(state.cmds.range_global, {"^([gv])(%p)(.-)%2(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			buf:map(function(_, l)
 				if m[1] == "g" and     l.text:find(m[3])
