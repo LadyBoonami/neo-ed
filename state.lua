@@ -22,14 +22,13 @@ function mt.__index:cmd(s)
 	end
 
 	local function pos1(f, m, a)
-		a = a or pos
 		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, " .. len .. "]") end
 		f(m, a)
 	end
 
 	local function pos2(f, m, a, b)
-		a = a or pos
-		b = b or pos
+		a = a or sel_a
+		b = b or sel_b
 		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
 		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
 		f(m, a, b)
@@ -44,8 +43,8 @@ function mt.__index:cmd(s)
 	end
 
 	local function global2(f, m, a, b)
-		a = a or 1
-		b = b or len
+		a = a or sel_a
+		b = b or sel_b
 		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
 		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
 		f(m, a, b)
