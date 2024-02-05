@@ -107,21 +107,28 @@ function m.core_editing(state)
 		end)
 	end, "insert lines before"})
 
-	table.insert(state.cmds.range_local, {"^j$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^j(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local tmp = {}
-			buf:inspect(function(_, l) table.insert(tmp, l.text) end, a, b)
+			buf:inspect(function(_, l)
+				local strip = #tmp > 0 and m[1] ~= ""
+				table.insert(tmp, strip and l.text:match("^%s*(.*)$") or l.text)
+			end, a, b)
 			buf:drop(a, b)
 			buf:seek(a - 1)
-			buf:insert({text = table.concat(tmp, "")})
+			buf:insert({text = table.concat(tmp, m[1])})
 		end)
 	end, "join lines"})
 
-	table.insert(state.cmds.range_line, {"^J(.)(.*)%1$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^J(.)(.*)%1(s?)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local new = {}
 			buf:inspect(function(_, l)
-				for l_ in l.text:gsub(m[2], "\n"):gmatch("[^\n]*") do table.insert(new, {text = l_}) end
+				local prefix = ""
+				for l_ in l.text:gsub(m[2], "\n"):gmatch("[^\n]*") do
+					table.insert(new, {text = prefix .. l_})
+					prefix = m[3] == "s" and l.text:match("^%s*") or ""
+				end
 			end, a, b)
 			buf:drop(a, b)
 			buf:append(new, a - 1)

@@ -121,8 +121,9 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 ### Line Range
 
 - `d`: delete the selected lines.
-- `J<sep><pattern><sep>`: split the line(s) on each match of lua pattern `<pattern>`.
+- `J<sep><pattern><sep><flags>`: split the line(s) on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
+  If `<flags>` contains `s`, prefix all new lines with the leading whitespace of the line they stem from.
 - `m<addr>`: move selected lines after `<addr>`.
 - `s<sep><pattern><sep><replacement><sep><mode>`: in the selected lines, replace lua pattern `<pattern>` with `<replacement>`.
   `<sep>` may be any punctuation character (usually `/`).
@@ -140,7 +141,8 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 ### Local Range
 
 - (empty command): style and print lines.
-- `j`: join the selected lines
+- `j<sep>`: join the selected lines.
+  If `<sep>` is given, strip the leading whitespace of each line except the first, and replace it with `<sep>`.
 
 ### Global Range
 
