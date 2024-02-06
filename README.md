@@ -97,6 +97,10 @@ For a complete overview of commands, including those installed by plugins, use t
 - `wqq`: write changes, then quit editor.
 - `#<n>`: switch to open file no. `<n>`.
 - `!<cmd>`: execute shell command `<cmd>`.
+- `:set`: list all settings for the current file.
+- `:set <k>`: print setting `<k>` with its value.
+- `:set <k>=<v>`: set value of setting `<k>`.
+- `:unset <k>`: unset setting `<k>`.
 
 Each file path can be a directory path prefixed by a `@` symbol to open a file picker there.
 

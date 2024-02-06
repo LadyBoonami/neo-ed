@@ -319,7 +319,40 @@ function m.core_print(state)
 		state.curr:inspect(function(n, l) print(l.text) end, a, b)
 		state.curr:seek(b)
 	end, "print raw lines"})
+end
 
+function m.core_settings(state)
+	local function parse_val(s)
+		if s == "y" then return true end
+		if s == "n" then return false end
+		if s:find("^%d+$") then return tonumber(s) end
+		return s
+	end
+
+	local function show_val(s)
+		if s == true then return "y" end
+		if s == false then return "n" end
+		return tostring(s)
+	end
+
+	table.insert(state.cmds.file, {":set +([^ =]+)=(.+)$", function(m)
+		state.curr.conf[m[1]] = parse_val(m[2])
+	end, "set configuration value"})
+
+	table.insert(state.cmds.file, {":unset +([^ ]+)$", function(m)
+		state.curr.conf[m[1]] = nil
+	end, "unset configuration value"})
+
+	table.insert(state.cmds.file, {":set +([^ ]+)$", function(m)
+		print(m[1] .. "=" .. show_val(state.curr.conf[m[1]]))
+	end, "print configuration value"})
+
+	table.insert(state.cmds.file, {":set$", function()
+		local t = {}
+		for k in pairs(state.curr.conf) do table.insert(t, k) end
+		table.sort(t)
+		for _, k in ipairs(t) do print(k .. "=" .. show_val(state.curr.conf[k])) end
+	end, "print all configuration values"})
 end
 
 function m.core_state(state)
@@ -359,6 +392,7 @@ function m.core(state)
 	m.core_help     (state)
 	m.core_marks    (state)
 	m.core_print    (state)
+	m.core_settings (state)
 	m.core_state    (state)
 end
 
@@ -430,8 +464,6 @@ function m.charset(state)
 	table.insert(state.filters.write, function(s, b)
 		return lib.pipe("iconv -t " .. assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
 	end)
-
-	table.insert(state.cmds.file, {"^:charset *(.*)$", function(m) state.curr.conf.charset = m[1] end, "Set charset"})
 end
 
 function m.clipboard(state)
@@ -484,8 +516,6 @@ function m.eol(state)
 		if not b.conf.crlf then return s end
 		return s:gsub("\n", "\r\n")
 	end)
-
-	table.insert(state.cmds.file, {"^:crlf ([yn])$", function(m) state.curr.conf.crlf = m[1] == "y" end, "Set CRLF line breaks"})
 end
 
 function m.eol_filter(state)
