@@ -181,6 +181,20 @@ function m.core_editing(state)
 			buf:append(buf:extract(a, b), dst)
 		end)
 	end, "copy (transfer) lines"})
+
+	table.insert(state.cmds.range_line, {"^>(%d*)$", function(m, a, b)
+		local indent = "\t"
+		if state.curr.conf.tab2spc then indent = (" "):rep(state.curr.conf.indent) end
+		state:cmd(a .. "," .. b .. "s/^/" .. indent:rep(tonumber(m[1]) or 1) .. "/")
+	end, "indent lines (by amount of steps)"})
+
+	table.insert(state.cmds.range_line, {"^<(%d*)$", function(m, a, b)
+		state.curr:change(function(buf)
+			local indent = "\t"
+			if state.curr.conf.tab2spc then indent = (" "):rep(state.curr.conf.indent) end
+			for i = 1, tonumber(m[1]) or 1 do state:cmd(a .. "," .. b .. "s/^" .. indent .. "//") end
+		end)
+	end, "indent lines (by amount of steps)"})
 end
 
 function m.core_help(state)

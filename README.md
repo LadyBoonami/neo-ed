@@ -137,6 +137,8 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `C`: copy line(s) to clipboard.
 - `X`: cut line(s) to clipboard.
 - `|<cmd>`: pipe lines through shell command `<cmd>`.
+- `>`: indent lines according to indentation settings, append number to add multiple levels.
+- `<`: unindent lines according to indentation settings, append number to remove multiple levels.
 
 ### Local Range
 
@@ -146,7 +148,7 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 
 ### Global Range
 
-- `f`: select ("focus") the specified lines
+- `f`: select ("focus") the specified lines.
 - `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
 - `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
