@@ -234,7 +234,8 @@ return function(files)
 	if not confdir then
 		confdir = os.getenv("HOME") .. "/.config"
 	end
-	ret.config_file = confdir .. "/neo-ed/config.lua"
+	ret.config_dir = confdir .. "/neo-ed"
+	ret.config_file = ret.config_dir .. "/config.lua"
 
 	local ok, _, errno = posix.unistd.access(ret.config_file, "r")
 	if not ok and errno == posix.errno.ENOENT then

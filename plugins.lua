@@ -620,7 +620,7 @@ function m.tabs_filter(state)
 			local lw  = #lvls
 			local col = color[(lvl - 1) % 6 + 1]
 			table.insert(ret, pre)
-			if num and rem > lw then
+			if num and rem >= lw then
 				for i = 1, rem - lw do table.insert(ret, " ") end
 				table.insert(ret, superscript(lvls))
 			else
@@ -735,16 +735,23 @@ function m.editorconfig(state)
 		return to
 	end
 
+	local function load_editorconfig_for(path, into)
+		local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(path)))
+		local conf = {}
+		for l in h:lines() do
+			local k, v = l:match("^([^=]+)=(.*)$")
+			if k then conf[k] = v end
+		end
+
+		from_editorconfig(conf, into)
+	end
+
 	table.insert(state.hooks.load_pre, function(b)
 		if b.path then
-			local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(b.path)))
-			local conf = {}
-			for l in h:lines() do
-				local k, v = l:match("^([^=]+)=(.*)$")
-				if k then conf[k] = v end
-			end
-
-			from_editorconfig(conf, b.conf)
+			load_editorconfig_for(b.state.config_dir .. "/global", b.conf)
+			local suf = b.path:match("[^/.]+(%.[^/]+)$")
+			if suf then load_editorconfig_for(b.state.config_dir .. "/global" .. suf, b.conf) end
+			load_editorconfig_for(b.path, b.conf)
 		end
 	end)
 
