@@ -54,6 +54,10 @@ An empty command styles and prints this selection, and the `f` and `F` commands 
 - `.` stands for the current line.
 - `$` stands for the last line of the current selection.
 - `$$` stands for the last line in the file.
+- A `+` sign stands for the line after the current one.
+- A `-` sign stands for the line before the current one.
+- A number preceded by a `+` sign stands for the current line plus that number of lines.
+- A number preceded by a `-` sign stands for the current line minus that number of lines.
 - A lua pattern, delimited by a single punctuation character (usually `/`), stands for the first line in the file that matches that pattern.
 - `'` followed by a single lowercase letter stands for the first line marked with that letter.
 
