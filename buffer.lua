@@ -33,11 +33,14 @@ function mt.__index:addr(s, loc)
 	lib.error("could not parse: " .. s)
 end
 
-function mt.__index:all()
-	return self:extract()
+function mt.__index:all(elem)
+	elem = elem or self.curr
+	assert(elem.nprev and elem.nnext)
+	return self:extract(nil, nil, elem)
 end
 
 function mt.__index:append(lines, pos)
+	for _, l in ipairs(lines) do assert(l.text) end
 	if pos then self:seek(pos) end
 	for _, l in ipairs(lines) do self:insert(l) end
 end
@@ -53,7 +56,7 @@ function mt.__index:change(f)
 			self:undo()
 			lib.error(err)
 		end
-		self:diff()
+		self:diff_show()
 	end
 end
 
@@ -97,24 +100,93 @@ function mt.__index:delete()
 	return ret
 end
 
-function mt.__index:diff()
-	local cmd = os.execute("which git >/dev/null 2>&1")
-		and "git diff --no-index --color %s %s | tail -n +5"
-		or  "diff -u %s %s | tail -n +3"
+function mt.__index:diff(fst, snd, print_)
+	-- based on https://en.wikipedia.org/wiki/Wagner%E2%80%93Fischer_algorithm
 
-	local pa = (os.getenv("HOME") or "/tmp") .. "/.ned-old"
-	local pb = (os.getenv("HOME") or "/tmp") .. "/.ned-new"
-	local ha = posix.fcntl.open(pa, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
-	local hb = posix.fcntl.open(pb, posix.fcntl.O_WRONLY | posix.fcntl.O_CREAT, 6*8*8)
-	self:inspect(function(_, l) posix.unistd.write(ha, l.text); posix.unistd.write(ha, "\n") end, nil, nil, self.history[#self.history].curr)
-	self:inspect(function(_, l) posix.unistd.write(hb, l.text); posix.unistd.write(hb, "\n") end                                            )
-	posix.unistd.close(ha)
-	posix.unistd.close(hb)
+	fst = fst or self.history[#self.history].curr
+	snd = snd or self.curr
 
-	os.execute((cmd):format(lib.shellesc(pa), lib.shellesc(pb)))
+	assert(fst.nprev and fst.nnext)
+	assert(snd.nprev and snd.nnext)
 
-	posix.unistd.unlink(pa)
-	posix.unistd.unlink(pb)
+	local f = self:all(fst)
+	local s = self:all(snd)
+
+	local printf = print_ and self:print_lines(f) or nil
+	local prints = print_ and self:print_lines(s) or nil
+
+	local function mkkeep(i, j, dist) return {dist = dist, op = "=", text = f[i].text, pretty = printf[i] and printf[i].text or nil, nf = i, ns = j} end
+	local function mkadd (i, j, dist) return {dist = dist, op = "+", text = s[j].text, pretty = prints[j] and prints[j].text or nil,         ns = j} end
+	local function mksub (i, j, dist) return {dist = dist, op = "-", text = f[i].text, pretty = printf[i] and printf[i].text or nil, nf = i        } end
+
+	local m = {}
+
+	for i = 0, #f do
+		m[i] = {}
+
+		for j = 0, #s do
+			    if i == 0 and j == 0 then m[i][j] = {dist = 0, op = false}
+			elseif i == 0            then m[i][j] = mkadd(i, j, m[i][j-1].dist + 1)
+			elseif j == 0            then m[i][j] = mksub(i, j, m[i-1][j].dist + 1)
+
+			else
+				local keep = f[i].text == s[j].text and m[i-1][j-1].dist or math.huge
+				local add  = m[i][j-1].dist + 1
+				local sub  = m[i-1][j].dist + 1
+				local min  = math.min(keep, add, sub)
+
+				    if min == keep then m[i][j] = mkkeep(i, j, keep)
+				elseif min == add  then m[i][j] = mkadd (i, j, add )
+				elseif min == sub  then m[i][j] = mksub (i, j, sub )
+				end
+			end
+		end
+	end
+
+	local tmp = {}
+	local i = #m
+	local j = #m[0]
+
+	while i > 0 and j > 0 do
+		table.insert(tmp, m[i][j])
+
+		    if m[i][j].op == "+" then    j =        j - 1
+		elseif m[i][j].op == "-" then i    = i - 1
+		else                          i, j = i - 1, j - 1
+		end
+	end
+
+	local ret = {}
+	for i = #tmp, 1, -1 do table.insert(ret, tmp[i]) end
+	return ret
+end
+
+function mt.__index:diff_show(ctx)
+	ctx = ctx or 3
+
+	local d = self:diff(nil, nil, true)
+	local w = math.max(#tostring(self:length()), #tostring(self:length(self.history[#self.history].curr)))
+	local filler = ("."):rep(w)
+
+	for i = 1, #d do
+		local show = false
+		if d[i].op ~= "=" then show = true end
+		for j = 1, ctx do
+			if d[i + j] and d[i + j].op ~= "=" then show = true end
+			if d[i - j] and d[i - j].op ~= "=" then show = true end
+		end
+
+		if show then
+			    if d[i].op == "+" then print(("%s%" .. tostring(w) .. "d%s│%s%s"):format("\x1b[42;30m", d[i].ns, "\x1b[0;33m", "\x1b[0m", d[i].pretty))
+			elseif d[i].op == "-" then print(("%s%" .. tostring(w) .. "s%s│%s%s"):format("\x1b[41;30m", ""     , "\x1b[0;33m", "\x1b[0m", d[i].pretty))
+			else                       print(("%s%" .. tostring(w) ..   "d│%s%s"):format("\x1b[33m"   , d[i].ns,               "\x1b[0m", d[i].pretty))
+			end
+
+		elseif d[i + ctx + 1] and d[i + ctx + 1].op ~= "=" or d[i - ctx - 1] and d[i - ctx - 1].op ~= "=" then
+			print(("%s%s│%s"):format("\x1b[33m", filler, "\x1b[0m"))
+
+		end
+	end
 end
 
 function mt.__index:drop(first, last)
@@ -123,9 +195,12 @@ function mt.__index:drop(first, last)
 	for _ = first, last do self:delete() end
 end
 
-function mt.__index:extract(first, last)
+function mt.__index:extract(first, last, elem)
+	elem  = elem  or self.curr
 	first = first or 1
-	last  = last  or self:length()
+	last  = last  or self:length(elem)
+
+	assert(elem.nprev and elem.nnext)
 
 	local ret = {}
 	self:inspect(function(_, l)
@@ -135,7 +210,7 @@ function mt.__index:extract(first, last)
 		tmp.nprev = nil
 		tmp.nnext = nil
 		table.insert(ret, tmp)
-	end, first, last)
+	end, first, last, elem)
 	return ret
 end
 
@@ -149,6 +224,8 @@ end
 
 -- Insert the given element after the current buffer position, making it the new buffer position.
 function mt.__index:insert(elem)
+	assert(elem.text)
+
 	elem = lib.dup(elem)
 
 	local prev = lib.dup(self.curr)
@@ -166,6 +243,9 @@ function mt.__index:inspect(f, first, last, elem)
 	if not first then first = 1         end
 	if not last  then last  = 1/0       end
 	if not elem  then elem  = self.curr end
+
+	assert(elem.nprev)
+	assert(elem.nnext)
 
 	local function head(elem)
 		if elem then
@@ -193,6 +273,9 @@ function mt.__index:inspect_r(f, first, last, elem)
 	if not last  then last  = 1         end
 	if not elem  then elem  = self.curr end
 
+	assert(elem.nprev)
+	assert(elem.nnext)
+
 	local function head(elem)
 		if elem then
 			local n = elem.nprev + 1
@@ -214,8 +297,10 @@ function mt.__index:inspect_r(f, first, last, elem)
 end
 
 -- Return the total number of lines in the buffer.
-function mt.__index:length()
-	return self.curr.nprev + 1 + self.curr.nnext
+function mt.__index:length(elem)
+	elem = elem or self.curr
+	assert(elem.nprev and elem.nnext)
+	return elem.nprev + 1 + elem.nnext
 end
 
 function mt.__index:map(f, first, last)
@@ -265,18 +350,31 @@ function mt.__index:print(lines)
 		for i = self:sel_first(), self:sel_last() do lines[i] = true end
 	end
 
-	local all = self:all()
+	local all = self:print_lines()
 
 	lib.hook(self.state.hooks.print_pre, self, all, lines)
 
+	local w = #tostring(#all)
+	for i, l in ipairs(all) do
+		if lines[i] then
+			io.stdout:write(("\x1b[%sm%" .. tostring(w) .. "d\x1b[0;33m│\x1b[0m%s\n"):format(i == self:pos() and "43;30" or "33", i, l.text))
+		end
+	end
+
+	lib.hook(self.state.hooks.print_post, self, all, lines)
+end
+
+function mt.__index:print_lines(l)
+	local ret = l or self:all()
+
 	local function go(f)
-		local ok, r = xpcall(f, lib.traceback, all, self)
+		local ok, r = xpcall(f, lib.traceback, ret, self)
 		if ok then
 			if not r then
 				local info = debug.getinfo(f, "S")
 				print("print function failed to produce output: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
 			else
-				all = r
+				ret = r
 			end
 		else
 			local info = debug.getinfo(f, "S")
@@ -288,14 +386,7 @@ function mt.__index:print(lines)
 	go(self.state.print.highlight)
 	for _, f in ipairs(self.state.print.post) do go(f) end
 
-	local w = #tostring(#all)
-	for i, l in ipairs(all) do
-		if lines[i] then
-			io.stdout:write(("\x1b[%sm%" .. tostring(w) .. "d\x1b[0;33m│\x1b[0m%s\n"):format(i == self:pos() and "43;30" or "33", i, l.text))
-		end
-	end
-
-	lib.hook(self.state.hooks.print_post, self, all, lines)
+	return ret
 end
 
 function mt.__index:pos()
@@ -470,8 +561,3 @@ return function(state, path)
 
 	return ret
 end
-
-----------------------------------------------------------------------------------------------------
---[[
-
-]]

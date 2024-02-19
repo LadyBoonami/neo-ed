@@ -791,20 +791,19 @@ end
 function m.pygmentize_filter(state)
 	state.print.highlight = function(lines, curr)
 		if curr.conf.mode then
-			local tmp = curr:all()
 			local a = 1
-			local b = #tmp
-			while tmp[a] and tmp[a].text == "" do a = a + 1 end
-			while tmp[b] and tmp[b].text == "" do b = b - 1 end
+			local b = #lines
+			while lines[a] and lines[a].text == "" do a = a + 1 end
+			while lines[b] and lines[b].text == "" do b = b - 1 end
 			if a <= b then
 				local pre  = {}
 				local main = {}
 				local suf  = {}
 				local raw  = {}
 
-				for i = 1    , a - 1 do table.insert(pre , tmp[i])                                 end
-				for i = a    , b     do table.insert(main, tmp[i]); table.insert(raw, tmp[i].text) end
-				for i = b + 1, #tmp  do table.insert(suf , tmp[i])                                 end
+				for i = 1    , a - 1  do table.insert(pre , lines[i])                                   end
+				for i = a    , b      do table.insert(main, lines[i]); table.insert(raw, lines[i].text) end
+				for i = b + 1, #lines do table.insert(suf , lines[i])                                   end
 
 				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.mode), table.concat(raw, "\n"))
 

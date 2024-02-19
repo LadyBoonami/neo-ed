@@ -7,7 +7,6 @@
 # Other
 
 - API documentation
-- Don't write file diff to disk on every change
 - Implement `l` properly (not as an alias for default print)
 
 # Someday / Maybe
