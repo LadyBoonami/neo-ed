@@ -112,12 +112,12 @@ function mt.__index:diff(fst, snd, print_)
 	local f = self:all(fst)
 	local s = self:all(snd)
 
-	local printf = print_ and self:print_lines(f) or nil
-	local prints = print_ and self:print_lines(s) or nil
+	local printf = print_ and self:print_lines(fst) or nil
+	local prints = print_ and self:print_lines(snd) or nil
 
-	local function mkkeep(i, j, dist) return {dist = dist, op = "=", text = f[i].text, pretty = printf[i] and printf[i].text or nil, nf = i, ns = j} end
-	local function mkadd (i, j, dist) return {dist = dist, op = "+", text = s[j].text, pretty = prints[j] and prints[j].text or nil,         ns = j} end
-	local function mksub (i, j, dist) return {dist = dist, op = "-", text = f[i].text, pretty = printf[i] and printf[i].text or nil, nf = i        } end
+	local function mkkeep(i, j, dist) return {dist = dist, op = "=", text = f[i].text, pretty = print_ and printf[i].text or f[i].text, nf = i, ns = j} end
+	local function mkadd (i, j, dist) return {dist = dist, op = "+", text = s[j].text, pretty = print_ and prints[j].text or s[j].text,         ns = j} end
+	local function mksub (i, j, dist) return {dist = dist, op = "-", text = f[i].text, pretty = print_ and printf[i].text or f[i].text, nf = i        } end
 
 	local m = {}
 
@@ -135,9 +135,12 @@ function mt.__index:diff(fst, snd, print_)
 				local sub  = m[i-1][j].dist + 1
 				local min  = math.min(keep, add, sub)
 
-				    if min == keep then m[i][j] = mkkeep(i, j, keep)
-				elseif min == add  then m[i][j] = mkadd (i, j, add )
-				elseif min == sub  then m[i][j] = mksub (i, j, sub )
+				    if min == keep and m[i-1][j-1].op == "=" then m[i][j] = mkkeep(i, j, keep)
+				elseif min == add  and m[i  ][j-1].op == "+" then m[i][j] = mkadd (i, j, add )
+				elseif min == sub  and m[i-1][j  ].op == "-" then m[i][j] = mksub (i, j, sub )
+				elseif min == keep                           then m[i][j] = mkkeep(i, j, keep)
+				elseif min == add                            then m[i][j] = mkadd (i, j, add )
+				elseif min == sub                            then m[i][j] = mksub (i, j, sub )
 				end
 			end
 		end
@@ -167,6 +170,8 @@ function mt.__index:diff_show(ctx)
 	local d = self:diff(nil, nil, true)
 	local w = math.max(#tostring(self:length()), #tostring(self:length(self.history[#self.history].curr)))
 	local filler = ("."):rep(w)
+	local sep = (" "):rep(80)
+	if os.execute("which tput >/dev/null 2>&1") then sep = (" "):rep(tonumber(lib.pipe("tput cols", ""))) end
 
 	for i = 1, #d do
 		local show = false
@@ -177,9 +182,21 @@ function mt.__index:diff_show(ctx)
 		end
 
 		if show then
+			if not d[i-1] or d[i-1].op ~= d[i].op then
+				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[42m", sep, "\x1b[0m"))
+				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[41m", sep, "\x1b[0m"))
+				end
+			end
+
 			    if d[i].op == "+" then print(("%s%" .. tostring(w) .. "d%s│%s%s"):format("\x1b[42;30m", d[i].ns, "\x1b[0;33m", "\x1b[0m", d[i].pretty))
 			elseif d[i].op == "-" then print(("%s%" .. tostring(w) .. "s%s│%s%s"):format("\x1b[41;30m", ""     , "\x1b[0;33m", "\x1b[0m", d[i].pretty))
 			else                       print(("%s%" .. tostring(w) ..   "d│%s%s"):format("\x1b[33m"   , d[i].ns,               "\x1b[0m", d[i].pretty))
+			end
+
+			if not d[i+1] or d[i+1].op ~= d[i].op then
+				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[42m", sep, "\x1b[0m"))
+				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[41m", sep, "\x1b[0m"))
+				end
 			end
 
 		elseif d[i + ctx + 1] and d[i + ctx + 1].op ~= "=" or d[i - ctx - 1] and d[i - ctx - 1].op ~= "=" then
@@ -229,6 +246,7 @@ function mt.__index:insert(elem)
 	elem = lib.dup(elem)
 
 	local prev = lib.dup(self.curr)
+	prev.cache = nil
 	elem.prev  = prev
 	elem.next  = prev.next
 	elem.nprev = prev.nprev + 1
@@ -336,6 +354,7 @@ function mt.__index:map(f, first, last)
 	self.curr.prev = head(self.curr.prev)
 	self.curr.next = tail(self.curr.next, self.curr.nprev + 2)
 	if first <= self.curr.nprev + 1 and self.curr.nprev + 1 <= last then f(self.curr.nprev + 1, self.curr) end
+	self.curr.cache = nil
 end
 
 function mt.__index:modify(f, pos)
@@ -364,8 +383,10 @@ function mt.__index:print(lines)
 	lib.hook(self.state.hooks.print_post, self, all, lines)
 end
 
-function mt.__index:print_lines(l)
-	local ret = l or self:all()
+function mt.__index:print_lines(elem)
+	elem = elem or self.curr
+	if elem.cache and elem.cache.printed then return elem.cache.printed end
+	local ret = self:all(elem)
 
 	local function go(f)
 		local ok, r = xpcall(f, lib.traceback, ret, self)
@@ -385,6 +406,9 @@ function mt.__index:print_lines(l)
 	for _, f in ipairs(self.state.print.pre ) do go(f) end
 	go(self.state.print.highlight)
 	for _, f in ipairs(self.state.print.post) do go(f) end
+
+	elem.cache = elem.cache or {}
+	elem.cache.printed = ret
 
 	return ret
 end
@@ -451,6 +475,7 @@ function mt.__index:seek(n)
 
 		prev.next  = nil
 		prev.nnext = nil
+		prev.cache = nil
 
 		self.curr = curr
 	end
@@ -465,6 +490,7 @@ function mt.__index:seek(n)
 
 		next.prev  = nil
 		next.nprev = nil
+		next.cache = nil
 
 		self.curr = curr
 	end
