@@ -452,6 +452,58 @@ function m.autocmd(state)
 	end)
 end
 
+function m.blame(state)
+	table.insert(state.cmds.range_local, {"^:blame$", function(m, a, b)
+		local contents = {}
+		state.curr:inspect(function(_, l) table.insert(contents, l.text) end)
+		table.insert(contents, "")
+		local s = lib.pipe("git --no-pager blame -L " .. tostring(a) .. "," .. tostring(b) .. " --contents - --line-porcelain -w -M -C -- " .. lib.shellesc(state.curr.path), table.concat(contents, "\n"))
+		local pos = 1
+		local lines = state.curr:print_lines()
+
+		local lw = #tostring(state.curr:length())
+		local aw = 0
+		local hw = tonumber(lib.pipe("git config core.abbrev || echo 7", ""))
+
+		local r = {}
+		for i = a, b do
+			local row = {}
+			row.n      = i
+			row.hash   = s:match("(%x+)", pos)
+			row.author = s:match("\nauthor ([^\n]*)\n", pos)
+			row.date   = s:match("\nauthor%-time (%d+)\n", pos)
+			row.text   = lines[i].text
+
+			aw = math.max(aw, #row.author)
+
+			local _, next = s:find("\n\t[^\n]*\n", pos)
+			pos = next + 1
+
+			table.insert(r, row)
+		end
+
+		aw = math.min(aw, 40)
+
+		for _, row in ipairs(r) do
+			print(("%s%s%s %s%-" .. tostring(aw) .. "." .. tostring(aw) .. "s%s %s%s%s %s%" .. tostring(lw) .. "d│%s%s"):format(
+				"\x1b[36m",
+				os.date("%Y-%m-%d", tonumber(row.date)),
+				"\x1b[0m",
+				"\x1b[35m",
+				row.author,
+				"\x1b[0m",
+				"\x1b[34m",
+				row.hash:sub(1, hw),
+				"\x1b[0m",
+				"\x1b[33m",
+				row.n,
+				"\x1b[0m",
+				row.text
+			))
+		end
+	end, "run git blame"})
+end
+
 function m.charset(state)
 	local encodings = {
 		["latin1"  ] = "ISO8859_1",
@@ -698,6 +750,7 @@ function m.def(state)
 	m.core       (state)
 	m.align      (state)
 	m.autocmd    (state)
+	m.blame      (state)
 	m.charset    (state)
 	m.clipboard  (state)
 	m.config_file(state)
