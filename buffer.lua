@@ -147,7 +147,7 @@ function mt.__index:diff(fst, snd, print_)
 	local i = #m
 	local j = #m[0]
 
-	while i > 0 and j > 0 do
+	while i > 0 or j > 0 do
 		table.insert(tmp, m[i][j])
 
 		    if m[i][j].op == "+" then    j =        j - 1
