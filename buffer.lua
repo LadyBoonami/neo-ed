@@ -78,16 +78,15 @@ function mt.__index:delete()
 		local tmp = lib.dup(self.curr.next)
 		tmp.prev  = self.curr.prev
 		tmp.nprev = self.curr.nprev
+		tmp.cache = {}
 		self.curr = tmp
 
 	elseif self.curr.prev then
 		local tmp = lib.dup(self.curr.prev)
 		tmp.next  = self.curr.next
 		tmp.nnext = self.curr.nnext
+		tmp.cache = {}
 		self.curr = tmp
-
-	else
-		self.curr = false
 
 	end
 
@@ -96,6 +95,7 @@ function mt.__index:delete()
 	ret.nprev = nil
 	ret.nnext = nil
 	ret.hide  = nil
+	ret.cache = nil
 
 	return ret
 end
@@ -226,6 +226,7 @@ function mt.__index:extract(first, last, elem)
 		tmp.next  = nil
 		tmp.nprev = nil
 		tmp.nnext = nil
+		tmp.cache = nil
 		table.insert(ret, tmp)
 	end, first, last, elem)
 	return ret
@@ -246,13 +247,14 @@ function mt.__index:insert(elem)
 	elem = lib.dup(elem)
 
 	local prev = lib.dup(self.curr)
-	prev.cache = nil
 	elem.prev  = prev
 	elem.next  = prev.next
 	elem.nprev = prev.nprev + 1
 	elem.nnext = prev.nnext
+	elem.cache = {}
 	prev.next  = nil
 	prev.nnext = nil
+	prev.cache = nil
 	self.curr  = elem
 end
 
@@ -354,7 +356,7 @@ function mt.__index:map(f, first, last)
 	self.curr.prev = head(self.curr.prev)
 	self.curr.next = tail(self.curr.next, self.curr.nprev + 2)
 	if first <= self.curr.nprev + 1 and self.curr.nprev + 1 <= last then f(self.curr.nprev + 1, self.curr) end
-	self.curr.cache = nil
+	self.curr.cache = {}
 end
 
 function mt.__index:modify(f, pos)
@@ -385,7 +387,11 @@ end
 
 function mt.__index:print_lines(elem)
 	elem = elem or self.curr
-	if elem.cache and elem.cache.printed then return elem.cache.printed end
+	if elem.cache.printed then
+		assert(#elem.cache.printed == self:length(elem), "cache size mismatch, " .. #elem.cache.printed .. " ~= " .. self:length(elem))
+		return elem.cache.printed
+	end
+	print("Rendering...")
 	local ret = self:all(elem)
 
 	local function go(f)
@@ -407,7 +413,6 @@ function mt.__index:print_lines(elem)
 	go(self.state.print.highlight)
 	for _, f in ipairs(self.state.print.post) do go(f) end
 
-	elem.cache = elem.cache or {}
 	elem.cache.printed = ret
 
 	return ret
@@ -472,6 +477,7 @@ function mt.__index:seek(n)
 		curr.prev  = prev
 		curr.nprev = prev.nprev + 1
 		curr.hide  = nil
+		curr.cache = {printed = prev.cache.printed}
 
 		prev.next  = nil
 		prev.nnext = nil
@@ -487,10 +493,11 @@ function mt.__index:seek(n)
 		curr.next  = next
 		curr.nnext = next.nnext + 1
 		curr.hide  = nil
+		curr.cache = {printed = next.cache.printed}
 
 		next.prev  = nil
 		next.nprev = nil
-		next.cache = nil
+		next.cache = {}
 
 		self.curr = curr
 	end
@@ -499,12 +506,14 @@ end
 function mt.__index:select(first, last)
 	local oldfirst = self:sel_first()
 	local oldlast  = self:sel_last ()
+	local printed  = self.curr.cache.printed
 	self:seek(last)
 	self:map(
 		function(n, l) l.hide = not (first <= n and n <= last) end,
 		math.min(oldfirst, first),
 		math.max(oldlast , last )
 	)
+	self.curr.cache.printed = printed
 end
 
 function mt.__index:sel_first()
@@ -551,7 +560,7 @@ end
 
 return function(state, path)
 	local ret = setmetatable({}, mt)
-	ret.curr = {nprev = -1, nnext = 0}
+	ret.curr = {nprev = -1, nnext = 0, cache = {}}
 
 	ret.state = state
 
