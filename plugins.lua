@@ -474,6 +474,11 @@ function m.blame(state)
 			row.date   = s:match("\nauthor%-time (%d+)\n", pos)
 			row.text   = lines[i].text
 
+			if row.hash:find("^0+$") then
+				row.hash = row.hash:gsub("%d", " ")
+				row.author = "[uncommitted]"
+			end
+
 			aw = math.max(aw, #row.author)
 
 			local _, next = s:find("\n\t[^\n]*\n", pos)
@@ -484,16 +489,17 @@ function m.blame(state)
 
 		aw = math.min(aw, 40)
 
-		for _, row in ipairs(r) do
+		for i, row in ipairs(r) do
+			local dup = not not (r[i-1] and r[i-1].hash == row.hash)
 			print(("%s%s%s %s%-" .. tostring(aw) .. "." .. tostring(aw) .. "s%s %s%s%s %s%" .. tostring(lw) .. "d│%s%s"):format(
 				"\x1b[36m",
-				os.date("%Y-%m-%d", tonumber(row.date)),
+				dup and "          " or os.date("%Y-%m-%d", tonumber(row.date)),
 				"\x1b[0m",
 				"\x1b[35m",
-				row.author,
+				dup and "" or row.author,
 				"\x1b[0m",
 				"\x1b[34m",
-				row.hash:sub(1, hw),
+				dup and (" "):rep(hw) or row.hash:sub(1, hw),
 				"\x1b[0m",
 				"\x1b[33m",
 				row.n,
