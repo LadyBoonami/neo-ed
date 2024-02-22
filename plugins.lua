@@ -14,6 +14,9 @@ function m.core_addr_line(state)
 
 	table.insert(state.cmds.addr.prim, {"^%+(%d*)(.*)$", function(m) return state.curr:pos() + (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "current line + x"})
 	table.insert(state.cmds.addr.prim, {"^%-(%d*)(.*)$", function(m) return state.curr:pos() - (m[1] == "" and 1 or tonumber(m[1])), m[2] end, "current line - x"})
+
+	table.insert(state.cmds.addr.range, {"^%%%%(.*)$"  , function(m) return 1                     , state.curr:length(), m[1] end, "entire file"     })
+	table.insert(state.cmds.addr.range, {"^%%(.*)$"    , function(m) return state.curr:sel_first(), state.curr:sel_last(), m[1] end, "entire selection"})
 end
 
 function m.core_addr_pat(state)
@@ -211,6 +214,9 @@ function m.core_help(state)
 
 		print("Address modifiers:")
 		f(state.cmds.addr.cont, true)
+
+		print("Address range shorthands:")
+		f(state.cmds.addr.range, true)
 
 		print("Single line commands (prefixed by a single address, defaults to current line)")
 		f(state.cmds.line)

@@ -61,7 +61,7 @@ An empty command styles and prints this selection, and the `f` and `F` commands 
 - A lua pattern, delimited by a single punctuation character (usually `/`), stands for the first line in the file that matches that pattern.
 - `'` followed by a single lowercase letter stands for the first line marked with that letter.
 
-### Address modifiers
+### Address Modifiers
 
 - A `+` sign adds a single line to the address.
 - A `-` sign subtracts a single line from the address.
@@ -71,6 +71,11 @@ An empty command styles and prints this selection, and the `f` and `F` commands 
 - A lua pattern delimited by `\` characters selects the last line before that matches that pattern.
 - `'` followed by a single lowercase letter selects the next line afterwards that is marked with that letter.
 - A backtick followed by a single lowerase letter selects the last line before that is marked with that letter.
+
+### Range Shorthands
+
+- A `%` is short for `^,$`, i.e. the entire selection.
+- A `%%` is short for `^^,$$`, i.e. the entire file.
 
 ### Ranges
 

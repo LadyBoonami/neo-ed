@@ -84,6 +84,9 @@ function mt.__index:cmd(s)
 	end
 
 	local function cmd0(s)
+		local a, b, s_ = lib.match{s = s, choose = self.cmds.addr.range, def = function() end}
+		if a then return cmd2(a, b, s_) end
+
 		local a, s_ = lib.match{s = s, choose = self.cmds.addr.prim, def = function() end}
 		if a then return cmd1(a, s_) end
 
@@ -185,14 +188,15 @@ return function(files)
 
 	ret.cmds = {
 		addr = {
-			prim = {},
-			cont = {},
+			prim  = {},
+			cont  = {},
+			range = {},
 		},
-		line = {},
-		range_line = {},
-		range_local = {},
+		line         = {},
+		range_line   = {},
+		range_local  = {},
 		range_global = {},
-		file = {},
+		file         = {},
 	}
 
 	ret.files = {}
