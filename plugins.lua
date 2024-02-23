@@ -299,7 +299,7 @@ function m.core_marks(state)
 
 	table.insert(state.print.post, function(lines)
 		for _, l in ipairs(lines) do
-			if l.mark then l.text = l.text .. " \x1b[47;30m " .. l.mark .. " \x1b[0m" end
+			if l.mark then l.text = l.text .. " \x1b[43;30m " .. l.mark .. " \x1b[0m" end
 		end
 		return lines
 	end)
@@ -463,7 +463,15 @@ function m.blame(state)
 		local contents = {}
 		state.curr:inspect(function(_, l) table.insert(contents, l.text) end)
 		table.insert(contents, "")
-		local s = lib.pipe("git --no-pager blame -L " .. tostring(a) .. "," .. tostring(b) .. " --contents - --line-porcelain -w -M -C -- " .. lib.shellesc(state.curr.path), table.concat(contents, "\n"))
+		local s = lib.pipe(
+			("git --no-pager blame -L %d,%d --contents - --line-porcelain -w -M -C -- %s"):format(
+				tostring(a),
+				tostring(b),
+				lib.shellesc(state.curr.path)
+			),
+			table.concat(contents, "\n")
+		)
+
 		local pos = 1
 		local lines = state.curr:print_lines()
 
@@ -590,24 +598,6 @@ function m.eol_filter(state)
 		for i, l in ipairs(lines) do lines[i].text = l.text .. "\x1b[34m·\x1b[0m" end
 		return lines
 	end)
-end
-
-function m.lua_cmd(state)
-	table.insert(state.cmds.file, {"^:lua *(.*)$", function(m)
-		assert(load(m[1], "interactive", "t"))()
-	end, "execute lua command"})
-end
-
-function m.reload(state)
-	table.insert(state.cmds.file, {"^:reload$", function()
-		local files = {}
-		for _, v in ipairs(state.files) do
-			if v.modified then lib.error("buffer modified: " .. v.path) end
-			table.insert(files, {path = v.path, cmd = tostring(#v.prev + 1) .. "," .. tostring(#v.prev + #v.curr) .. "f"})
-		end
-		for _, v in ipairs(state.files) do v:close() end
-		return require("neo-ed.state")(files):main()
-	end, "reload editor config"})
 end
 
 function m.shell(state)
@@ -768,8 +758,6 @@ function m.def(state)
 	m.config_file(state)
 	m.eol        (state)
 	m.eol_filter (state)
-	m.lua_cmd    (state)
-	m.reload     (state)
 	m.ssh_url    (state)
 	m.shell      (state)
 	m.tabs_filter(state)
@@ -905,7 +893,7 @@ function m.pygmentize_mode_detect(state)
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
 			curr.conf.mode = h:read("l")
 		end
-		if #curr.curr > 100 and (not curr.conf.mode or curr.conf.mode == "text") then guess(curr) end
+		if curr:length() > 100 and (not curr.conf.mode or curr.conf.mode == "text") then guess(curr) end
 	end)
 
 	table.insert(state.cmds.file, {"^:guess$", function() guess(state.curr) end, "guess file type from content"})
