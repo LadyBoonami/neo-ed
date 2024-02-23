@@ -115,6 +115,26 @@ function m.pipe(cmd, stdin)
 	end
 end
 
+local profmt = {
+	__index = {
+		start = function(self, name)
+			table.insert(self.steps, {name = name, start = os.clock()})
+		end,
+		stop = function(self)
+			self.steps[#self.steps].stop = os.clock()
+		end,
+		print = function(self)
+			print("Sequence for " .. self.name .. ":")
+			for _, v in ipairs(self.steps) do
+				print(("%10.3fms %s"):format((v.stop - v.start) * 1000, v.name))
+			end
+		end,
+	}
+}
+function m.profiler(name)
+	return setmetatable({name = name, steps = {}}, profmt)
+end
+
 function m.print_doc(s)
 	print((s
 		:gsub("\t", "")

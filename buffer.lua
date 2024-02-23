@@ -121,13 +121,34 @@ function mt.__index:diff(fst, snd, print_)
 
 	local m = {}
 
-	for i = 0, #f do
+	-- determine lower bound for quadratic algorithm (don't have to compare equal lines)
+	local lb = 1
+	local seq_start = {}
+	while f[lb] and s[lb] and f[lb].text == s[lb].text do
+		table.insert(seq_start, mkkeep(lb, lb, 0))
+		lb = lb + 1
+	end
+
+	-- determine upper bound for quadratic algorithm (we don't know the final distance yet, so we use -1 as a placeholder)
+	local ubf = #f
+	local ubs = #s
+	local seq_end = {}
+	while ubf > lb and ubs > lb and f[ubf].text == s[ubs].text do
+		table.insert(seq_end, mkkeep(ubf, ubs, -1))
+		ubf = ubf - 1
+		ubs = ubs - 1
+	end
+
+	-- actual core algorithm, calculate Levenshtein distance for sub-sequences and record some extra info
+	for i = lb - 1, ubf do
 		m[i] = {}
 
-		for j = 0, #s do
-			    if i == 0 and j == 0 then m[i][j] = {dist = 0, op = false}
-			elseif i == 0            then m[i][j] = mkadd(i, j, m[i][j-1].dist + 1)
-			elseif j == 0            then m[i][j] = mksub(i, j, m[i-1][j].dist + 1)
+		for j = lb - 1, ubs do
+
+			-- base cases
+			    if i == lb - 1 and j == lb - 1 then m[i][j] = {dist = 0, op = false}
+			elseif i == lb - 1                 then m[i][j] = mkadd(i, j, m[i][j-1].dist + 1)
+			elseif j == lb - 1                 then m[i][j] = mksub(i, j, m[i-1][j].dist + 1)
 
 			else
 				local keep = f[i].text == s[j].text and m[i-1][j-1].dist or math.huge
@@ -147,10 +168,11 @@ function mt.__index:diff(fst, snd, print_)
 	end
 
 	local tmp = {}
-	local i = #m
-	local j = #m[0]
+	local i = ubf
+	local j = ubs
 
-	while i > 0 or j > 0 do
+	-- reconstruct optimal sequence of operations from core matrix, output will be in reverse order
+	while m[i][j].op do
 		table.insert(tmp, m[i][j])
 
 		    if m[i][j].op == "+" then    j =        j - 1
@@ -159,8 +181,19 @@ function mt.__index:diff(fst, snd, print_)
 		end
 	end
 
+	-- assemble final order from trivial prefix, suffix, and the matrix part we just traced
 	local ret = {}
+
+	for _, v in ipairs(seq_start) do table.insert(ret, v) end
+
 	for i = #tmp, 1, -1 do table.insert(ret, tmp[i]) end
+
+	local dist = ret[#ret].dist
+	for _, v in ipairs(seq_end) do
+		v.dist = dist	-- fill in actual distance
+		table.insert(ret, v)
+	end
+
 	return ret
 end
 
@@ -391,20 +424,23 @@ function mt.__index:print_lines(elem)
 		assert(#elem.cache.printed == self:length(elem), "cache size mismatch, " .. #elem.cache.printed .. " ~= " .. self:length(elem))
 		return elem.cache.printed
 	end
-	print("Rendering...")
+	local prof = lib.profiler("print pipeline")
+	prof:start("deep copy")
 	local ret = self:all(elem)
+	prof:stop()
 
 	local function go(f)
+		local info = debug.getinfo(f, "S")
+		prof:start(info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
 		local ok, r = xpcall(f, lib.traceback, ret, self)
+		prof:stop()
 		if ok then
 			if not r then
-				local info = debug.getinfo(f, "S")
 				print("print function failed to produce output: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
 			else
 				ret = r
 			end
 		else
-			local info = debug.getinfo(f, "S")
 			print("print function failed: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ": " .. r)
 		end
 	end
@@ -414,6 +450,8 @@ function mt.__index:print_lines(elem)
 	for _, f in ipairs(self.state.print.post) do go(f) end
 
 	elem.cache.printed = ret
+
+--	prof:print()
 
 	return ret
 end
