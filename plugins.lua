@@ -315,9 +315,7 @@ end
 
 function m.core_marks(state)
 	table.insert(state.cmds.line, {"^k(%l?)$", function(m, a)
-		state.curr:change(function(buf)
-			buf:map(function(_, l) l.mark = m[1] ~= "" and m[1] or nil end, a, a)
-		end)
+		buf:map(function(_, l) l.mark = m[1] ~= "" and m[1] or nil end, a, a)
 	end, "mark line"})
 
 	table.insert(state.cmds.addr.prim, {"^'(%l)(.*)$", function(m)
