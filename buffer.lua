@@ -590,7 +590,10 @@ return function(state, path)
 		trim    = false,
 	}
 
-	if path then ret:set_path(path) end
+	if path then
+		ret:set_path(path)
+		ret.modified = false
+	end
 
 	lib.hook(ret.state.hooks.load_pre, ret)
 
