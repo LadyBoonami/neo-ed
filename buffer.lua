@@ -441,18 +441,10 @@ function mt.__index:print_lines(data)
 		local info = debug.getinfo(f, "S")
 
 		prof:start(info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
-		local ok, r = xpcall(f, lib.traceback, ret, self)
+		local ok, err = xpcall(f, lib.traceback, ret, self)
 		prof:stop()
 
-		if ok then
-			if not r then
-				print("print function failed to produce output: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
-			else
-				ret = r
-			end
-		else
-			print("print function failed: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ": " .. r)
-		end
+		if not ok then self.state:warn("print function failed: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ": " .. err) end
 	end
 
 	for _, f in ipairs(self.state.print.pre ) do go(f) end

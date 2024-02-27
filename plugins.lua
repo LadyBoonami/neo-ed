@@ -345,7 +345,6 @@ function m.core_marks(state)
 		for _, l in ipairs(lines) do
 			if l.mark then l.text = l.text .. " \x1b[43;30m " .. l.mark .. " \x1b[0m" end
 		end
-		return lines
 	end)
 end
 
@@ -606,7 +605,6 @@ end
 function m.eol_filter(state)
 	table.insert(state.print.post, 1, function(lines)
 		for i, l in ipairs(lines) do lines[i].text = l.text .. "\x1b[34m·\x1b[0m" end
-		return lines
 	end)
 end
 
@@ -744,7 +742,6 @@ function m.tabs_filter(state)
 				:gsub("\t", tab_)
 			if not had then last = 0 end
 		end
-		return lines
 	end)
 end
 
@@ -850,33 +847,20 @@ function m.pygmentize_filter(state)
 			while lines[a] and lines[a].text == "" do a = a + 1 end
 			while lines[b] and lines[b].text == "" do b = b - 1 end
 			if a <= b then
-				local pre  = {}
-				local main = {}
-				local suf  = {}
-				local raw  = {}
+				local raw = {}
 
-				for i = 1    , a - 1  do table.insert(pre , lines[i])                                   end
-				for i = a    , b      do table.insert(main, lines[i]); table.insert(raw, lines[i].text) end
-				for i = b + 1, #lines do table.insert(suf , lines[i])                                   end
+				for i = a, b do table.insert(raw, lines[i].text) end
 
 				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.mode), table.concat(raw, "\n"))
 
-				local ret = {}
-				for _, l in ipairs(pre) do table.insert(ret, l) end
-				local i = 1
+				local i = a
 				for l in raw:gmatch("[^\n]*") do
-					if not main[i] then break end
-					local l_ = main[i]
-					l_.text = l
-					table.insert(ret, l_)
+					if i > b then break end
+					lines[i].text = l
 					i = i + 1
 				end
-				for _, l in ipairs(suf) do table.insert(ret, l) end
-				return ret
 			end
-			return lines
 		end
-		return lines
 	end
 end
 
