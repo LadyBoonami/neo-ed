@@ -8,6 +8,7 @@ Dependencies:
 
 - Lua 5.4
 - Lua `readline` bindings
+- `iconv` executable
 - Optional: `pygments` for syntax highlighting
 - Optional: `wl-clipboard` or `xclip` for clipboard support
 - Optional: `editorconfig` for Editorconfig support
@@ -109,7 +110,6 @@ For a complete overview of commands, including those installed by plugins, use t
 - `:set`: list all settings for the current file.
 - `:set <k>`: print setting `<k>` with its value.
 - `:set <k>=<v>`: set value of setting `<k>`.
-- `:unset <k>`: unset setting `<k>`.
 
 Each file path can be a directory path prefixed by a `@` symbol to open a file picker there.
 

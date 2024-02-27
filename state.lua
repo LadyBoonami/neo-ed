@@ -5,6 +5,14 @@ local mt = {
 	__index = {},
 }
 
+function mt.__index:add_conf(name, data)
+	lib.assert(data.type == "boolean" or data.type == "number" or data.type == "string", "invalid config data type for config key " .. name .. ": " .. data.type)
+	lib.assert(type(data.def) == data.type, "data default does not match declared type")
+	lib.assert(type(data.descr) == "string", "descr must have type string")
+
+	self.conf_defs[name] = data
+end
+
 function mt.__index:closed()
 	self.curr = self.files[self.curr.id] or self.files[self.curr.id - 1]
 	if not self.curr then os.exit(0) end
@@ -106,6 +114,10 @@ function mt.__index:cmd(s)
 	self.curr_cmd = nil
 end
 
+function mt.__index:err(s)
+	table.insert(self.errors, s)
+end
+
 function mt.__index:load(path)
 	local ret = require "neo-ed.buffer" (self, path)
 	table.insert(self.files, ret)
@@ -132,10 +144,11 @@ function mt.__index:main()
 				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 			))
 		end
-		if self.msg then
-			print("\x1b[31m" .. self.msg .. "\x1b[0m")
-			self.msg = nil
-		end
+
+		for _, v in ipairs(self.warnings) do print("\x1b[33m" .. v .. "\x1b[0m") end
+		for _, v in ipairs(self.errors  ) do print("\x1b[31m" .. v .. "\x1b[0m") end
+		self.warnings = {}
+		self.errors   = {}
 
 		local ok, cmd = pcall(lib.readline, "> ", self.history)
 
@@ -143,24 +156,24 @@ function mt.__index:main()
 			self.msg = "failed to read input: " .. cmd
 		elseif not cmd then
 			local ok, status = xpcall(self.quit, lib.traceback, self)
-			if not ok then self.msg = status end
+			if not ok then self:err(status) end
 		else
 			if cmd ~= "" then table.insert(self.history, cmd) end
 			local ok, status = xpcall(self.cmd, lib.traceback, self, cmd)
-			if not ok then self.msg = status end
+			if not ok then self:err(status) end
 		end
 	end
 end
 
 function mt.__index:path_hdl(s)
 	local s_ = s:match("^!(.*)$")
-	if s_ then return assert(io.popen(s_, "r")) end
-	return assert(io.open(self:path_resolve(s), "r"))
+	if s_ then return lib.assert(io.popen(s_, "r")) end
+	return lib.assert(io.open(self:path_resolve(s), "r"))
 end
 
 function mt.__index:path_resolve(s)
 	local s_ = s:match("^@(.*)$")
-	if s_ then s = assert(self:pick_file(s_ ~= "" and s_ or nil)) end
+	if s_ then s = lib.assert(self:pick_file(s_ ~= "" and s_ or nil)) end
 	local h <close> = io.popen("realpath --relative-base=. " .. lib.shellesc(s), "r")
 	return h:read("l")
 end
@@ -172,7 +185,7 @@ end
 
 function mt.__index:pick_file(base)
 	base = base or "."
-	if posix.sys.stat.S_ISDIR(assert(posix.sys.stat.stat(base)).st_mode) == 0 then return base end
+	if posix.sys.stat.S_ISDIR(lib.assert(posix.sys.stat.stat(base)).st_mode) == 0 then return base end
 	local paths = {}
 	for f in posix.dirent.files(base) do table.insert(paths, base .. "/" .. f) end
 	table.sort(paths)
@@ -181,6 +194,10 @@ end
 
 function mt.__index:quit(force)
 	while self.files[1] do self.files[1]:close(force) end
+end
+
+function mt.__index:warn(s)
+	table.insert(self.warnings, s)
 end
 
 return function(files)
@@ -230,6 +247,17 @@ return function(files)
 
 	ret.history = {}
 
+	ret.conf_defs = {}
+
+	ret.errors   = {}
+	ret.warnings = {}
+
+	ret:add_conf("end_nl" , {type = "boolean", def = true   , descr = "add terminating newline after last line"   })
+	ret:add_conf("indent" , {type = "number" , def = 4      , descr = "indentation depth step (spaces)"           })
+	ret:add_conf("mode"   , {type = "string" , def = "text" , descr = "editing mode / file type"                  })
+	ret:add_conf("tab2spc", {type = "boolean", def = false  , descr = "indent using spaces, convert tabs on entry"})
+	ret:add_conf("tabs"   , {type = "number" , def = 4      , descr = "tab width"                                 })
+
 	local confdir = os.getenv("XDG_CONFIG_HOME")
 	if not confdir and os.getenv("SUDO_USER") then
 		local l = io.popen("getent passwd " .. lib.shellesc(os.getenv("SUDO_USER"))):read("l")
@@ -249,7 +277,7 @@ return function(files)
 				require("neo-ed.plugins").core(ret)
 				break
 			else
-				assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/neo-ed"), "cannot create config dir"))
+				lib.assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/neo-ed"), "cannot create config dir"))
 				local h <close> = io.open(ret.config_file, "w")
 				h:write((require("neo-ed.default_config")))
 				print("Default configuration file has been created at " .. ret.config_file)

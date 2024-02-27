@@ -1,6 +1,5 @@
 # Plugin ideas
 
-- trim
 - autosave
 - tutorial
 

@@ -201,6 +201,50 @@ function m.core_editing(state)
 			for i = 1, tonumber(m[1]) or 1 do state:cmd(a .. "," .. b .. "s/^" .. indent .. "//") end
 		end)
 	end, "indent lines (by amount of steps)"})
+
+	table.insert(state.hooks.input_post, function(l, buf)
+		if not buf.conf.tab2spc then return l end
+		local spc = (" "):rep(buf.conf.indent)
+		return l:gsub("\t", spc)
+	end)
+end
+
+function m.core_file(state)
+	state:add_conf("trim", {type = "boolean", def = false, descr = "trim trailing whitespace before saving"})
+
+	table.insert(state.hooks.save_pre, function(buf)
+		if buf.conf.trim then
+			buf:map(function(_, l) l.text = l.text:match("^(.-)%s*$") end)
+		end
+	end)
+
+
+	local encodings = {
+		["latin1"  ] = "ISO8859_1",
+		["utf-8"   ] = "UTF-8",
+		["utf-16be"] = "UTF-16BE",
+		["utf-16le"] = "UTF-16LE",
+	}
+
+	state:add_conf("charset", {type = "string", def = "utf-8", descr = "encoding for reading and writing", on_set = function(buf, v) lib.assert(encodings[v], "unknown charset: " .. v); return v end})
+
+	table.insert(state.filters.read, function(s, b)
+		return lib.pipe("iconv -f " .. lib.assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
+	end)
+
+	table.insert(state.filters.write, function(s, b)
+		return lib.pipe("iconv -t " .. lib.assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
+	end)
+
+
+	state:add_conf("crlf", {type = "boolean", def = false, descr = "CRLF line break mode"})
+
+	table.insert(state.filters.read, function(s) return s:gsub("\r", "") end)
+
+	table.insert(state.filters.write, function(s, b)
+		if not b.conf.crlf then return s end
+		return s:gsub("\n", "\r\n")
+	end)
 end
 
 function m.core_help(state)
@@ -331,36 +375,23 @@ function m.core_print(state)
 end
 
 function m.core_settings(state)
-	local function parse_val(s)
-		if s == "y" then return true end
-		if s == "n" then return false end
-		if s:find("^%d+$") then return tonumber(s) end
-		return s
-	end
-
-	local function show_val(s)
-		if s == true then return "y" end
-		if s == false then return "n" end
-		return tostring(s)
-	end
-
 	table.insert(state.cmds.file, {":set +([^ =]+)=(.+)$", function(m)
-		state.curr.conf[m[1]] = parse_val(m[2])
+		state.curr:conf_set(m[1], m[2])
 	end, "set configuration value"})
 
-	table.insert(state.cmds.file, {":unset +([^ ]+)$", function(m)
-		state.curr.conf[m[1]] = nil
-	end, "unset configuration value"})
-
 	table.insert(state.cmds.file, {":set +([^ ]+)$", function(m)
-		print(m[1] .. "=" .. show_val(state.curr.conf[m[1]]))
+		print(m[1] .. "=" .. state.curr.conf[m[1]])
 	end, "print configuration value"})
 
 	table.insert(state.cmds.file, {":set$", function()
 		local t = {}
-		for k in pairs(state.curr.conf) do table.insert(t, k) end
+		for k in pairs(state.conf_defs) do table.insert(t, k) end
 		table.sort(t)
-		for _, k in ipairs(t) do print(k .. "=" .. show_val(state.curr.conf[k])) end
+		for _, k in ipairs(t) do
+			print("# " .. state.conf_defs[k].descr)
+			print(k .. "=" .. state.curr:conf_show(k))
+			print()
+		end
 	end, "print all configuration values"})
 end
 
@@ -387,7 +418,7 @@ function m.core_state(state)
 	table.insert(state.cmds.file, {"^wqq$"    , function( ) state.curr:save(    ); state:quit      () end, "write changes to the current file, then quit" })
 
 	table.insert(state.cmds.file, {"^#(%d+)$" , function(m)
-		state.curr = assert(state.files[tonumber(m[1])], "no such file")
+		state.curr = lib.assert(state.files[tonumber(m[1])], "no such file")
 		state.curr:print()
 	end, "switch to open file"})
 
@@ -398,6 +429,7 @@ function m.core(state)
 	m.core_addr_line(state)
 	m.core_addr_pat (state)
 	m.core_editing  (state)
+	m.core_file     (state)
 	m.core_help     (state)
 	m.core_marks    (state)
 	m.core_print    (state)
@@ -430,7 +462,7 @@ end
 function m.autocmd(state)
 	local use = {}
 	local function validate(s)
-		if s == nil then return nil end
+		if s == "" then return nil end
 		if use[s] == nil then
 			local answer
 			repeat
@@ -441,6 +473,10 @@ function m.autocmd(state)
 		end
 		return use[s] and s or nil
 	end
+
+	state:add_conf("autocmd_load_post", {type = "string", def = "", descr = "command to run after loading a file"})
+	state:add_conf("autocmd_save_pre" , {type = "string", def = "", descr = "command to run before saving a file"})
+	state:add_conf("autocmd_save_post", {type = "string", def = "", descr = "command to run after saving a file" })
 
 	table.insert(state.hooks.load_post, function(b)
 		local cmd = validate(b.conf.autocmd_load_post)
@@ -524,23 +560,6 @@ function m.blame(state)
 	end, "run git blame"})
 end
 
-function m.charset(state)
-	local encodings = {
-		["latin1"  ] = "ISO8859_1",
-		["utf-8"   ] = "UTF-8",
-		["utf-16be"] = "UTF-16BE",
-		["utf-16le"] = "UTF-16LE",
-	}
-
-	table.insert(state.filters.read, function(s, b)
-		return lib.pipe("iconv -f " .. assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
-	end)
-
-	table.insert(state.filters.write, function(s, b)
-		return lib.pipe("iconv -t " .. assert(encodings[b.conf.charset], "unknown charset: " .. b.conf.charset), s)
-	end)
-end
-
 function m.clipboard(state)
 	local copy_cmd, paste_cmd, paste_filter
 
@@ -582,15 +601,6 @@ end
 
 function m.config_file(state)
 	table.insert(state.cmds.file, {"^:config$", function() state:load(state.config_file):print() end, "open config file"})
-end
-
-function m.eol(state)
-	table.insert(state.filters.read, function(s) return s:gsub("\r", "") end)
-
-	table.insert(state.filters.write, function(s, b)
-		if not b.conf.crlf then return s end
-		return s:gsub("\n", "\r\n")
-	end)
 end
 
 function m.eol_filter(state)
@@ -641,10 +651,6 @@ function m.ssh_url(state)
 end
 
 function m.tabs_filter(state)
-	table.insert(state.cmds.file, {"^:tabs +(%d+)$"   , function(m) state.curr.conf.tabs    = tonumber(m[1]) end, "set tab width"      })
-	table.insert(state.cmds.file, {"^:indent +(%d+)$" , function(m) state.curr.conf.indent  = tonumber(m[1]) end, "set indentation"    })
-	table.insert(state.cmds.file, {"^:tab2spc ([yn])$", function(m) state.curr.conf.tab2spc = m[1] == "y"    end, "set tab replacement"})
-
 	table.insert(state.print.post, function(lines, b)
 		local color = {
 			function(s) return "\x1b[31m" .. s .. "\x1b[0m" end,
@@ -740,12 +746,6 @@ function m.tabs_filter(state)
 		end
 		return lines
 	end)
-
-	table.insert(state.hooks.input_post, function(l, buf)
-		if not buf.conf.tab2spc then return l end
-		local spc = (" "):rep(buf.conf.indent)
-		return l:gsub("\t", spc)
-	end)
 end
 
 function m.def(state)
@@ -753,10 +753,8 @@ function m.def(state)
 	m.align      (state)
 	m.autocmd    (state)
 	m.blame      (state)
-	m.charset    (state)
 	m.clipboard  (state)
 	m.config_file(state)
-	m.eol        (state)
 	m.eol_filter (state)
 	m.ssh_url    (state)
 	m.shell      (state)
@@ -768,12 +766,12 @@ function m.editorconfig(state)
 		to = to or {}
 
 		local t = {
-			charset                  = function(v) return "charset", v                    end,
-			end_of_line              = function(v) return "crlf", v:lower() == "crlf"     end,
-			indent_size              = function( ) return ""                              end,
-			indent_style             = function(v) return "tab2spc", v:lower() == "space" end,
-			tab_width                = function(v) return "tabs", tonumber(v) or 4        end,
-			trim_trailing_whitespace = function(v) return "trim", v:lower() == "true"     end,
+			charset                  = function(v) return "charset", v                                   end,
+			end_of_line              = function(v) return "crlf", v:lower() == "crlf" and "y" or "n"     end,
+			indent_size              = function( ) return ""                                             end,
+			indent_style             = function(v) return "tab2spc", v:lower() == "space" and "y" or "n" end,
+			tab_width                = function(v) return "tabs", tostring(tonumber(v) or 4)             end,
+			trim_trailing_whitespace = function(v) return "trim", v:lower() == "true" and "y" or "n"     end,
 		}
 
 		for k, v in pairs(from) do
@@ -785,13 +783,13 @@ function m.editorconfig(state)
 		end
 
 		if from.indent_size then
-			to.indent = (from.indent_size:lower() == "tab" and (tonumber(from.tab_width) or to.tabs or 4)) or tonumber(from.indent_size) or 4
+			to.indent = (from.indent_size:lower() == "tab" and (from.tab_width or to.tabs or "4")) or from.indent_size or "4"
 		end
 
 		return to
 	end
 
-	local function load_editorconfig_for(path, into)
+	local function load_editorconfig_for(b, path)
 		local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(path)))
 		local conf = {}
 		for l in h:lines() do
@@ -799,15 +797,18 @@ function m.editorconfig(state)
 			if k then conf[k] = v end
 		end
 
-		from_editorconfig(conf, into)
+		for k, v in pairs(from_editorconfig(conf)) do
+			local ok, msg = xpcall(b.conf_set, lib.traceback, b, k, v)
+			if not ok then state:warn("ignoring editorconfig key " .. k .. ": " .. msg) end
+		end
 	end
 
 	table.insert(state.hooks.load_pre, function(b)
 		if b.path then
-			load_editorconfig_for(b.state.config_dir .. "/global", b.conf)
+			load_editorconfig_for(b, b.state.config_dir .. "/global")
 			local suf = b.path:match("[^/.]+(%.[^/]+)$")
-			if suf then load_editorconfig_for(b.state.config_dir .. "/global" .. suf, b.conf) end
-			load_editorconfig_for(b.path, b.conf)
+			if suf then load_editorconfig_for(b, b.state.config_dir .. "/global" .. suf) end
+			load_editorconfig_for(b, b.path)
 		end
 	end)
 
@@ -877,8 +878,6 @@ function m.pygmentize_filter(state)
 		end
 		return lines
 	end
-
-	table.insert(state.cmds.file, {"^:mode +(.+)$", function(m) state.curr.conf.mode = m[1] end, "set file type"})
 end
 
 function m.pygmentize_mode_detect(state)
@@ -889,7 +888,7 @@ function m.pygmentize_mode_detect(state)
 	end
 
 	table.insert(state.hooks.load_post, function(curr)
-		if curr.path and not curr.conf.mode then
+		if curr.path and curr.conf.mode == "text" then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
 			curr.conf.mode = h:read("l")
 		end

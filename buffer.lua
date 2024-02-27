@@ -39,9 +39,46 @@ function mt.__index:all(data)
 end
 
 function mt.__index:append(lines, pos)
-	for _, l in ipairs(lines) do assert(l.text) end
+	for _, l in ipairs(lines) do lib.assert(l.text) end
 	if pos then self:seek(pos) end
 	for _, l in ipairs(lines) do self:insert(l) end
+end
+
+function mt.__index:conf_show(k)
+	local v = self.conf[k]
+	lib.assert(v ~= nil, "unknown config option: " .. k)
+
+	if type(v) == "boolean" then return v and "y" or "n" end
+	if type(v) == "number"  then return tostring(v)      end
+	if type(v) == "string"  then return v                end
+	lib.error("cannot show setting of type " .. type(v))
+end
+
+function mt.__index:conf_set(k, v)
+	assert(type(v) == "string")
+
+	local def = lib.assert(self.state.conf_defs[k], "unknown config option: " .. k)
+
+	local function parse_val(s)
+		if def.type == "boolean" then
+			if s == "y" then return true  end
+			if s == "Y" then return true  end
+			if s == "n" then return false end
+			if s == "N" then return false end
+			if s == "1" then return true  end
+			if s == "0" then return false end
+			lib.error("could not parse boolean: " .. s)
+
+		elseif def.type == "number" then
+			return lib.assert(tonumber(s), "could not parse number: " .. s)
+
+		elseif def.type == "string" then
+			return s
+
+		end
+	end
+
+	self.conf[k] = (def.on_set or function(_, v) return v end)(self, parse_val(v))
 end
 
 -- Create an undo point, then apply function `f` that changes the buffer. If `f` fails, roll back the changes.
@@ -258,7 +295,7 @@ end
 
 -- Insert the given element after the current buffer position, making it the new buffer position.
 function mt.__index:insert(elem)
-	assert(elem.text)
+	lib.assert(elem.text)
 
 	local newdata = {curr = lib.dup(elem)}
 	local newprev = lib.dup(self.data.curr)
@@ -438,10 +475,6 @@ function mt.__index:save(path)
 
 	lib.hook(self.state.hooks.save_pre, self)
 
-	if self.conf.trim then
-		self:map(function(_, l) l.text = l.text:match("^(.-)%s*$") end)
-	end
-
 	local s = {}
 	self:inspect(function(n, l) table.insert(s, l.text) end)
 	if self.conf.end_nl then table.insert(s, "") end
@@ -580,15 +613,8 @@ return function(state, path)
 	ret.history  = {}
 	ret.modified = false
 
-	ret.conf = {
-		charset = "utf-8",
-		crlf    = false,
-		end_nl  = true ,
-		indent  = 4    ,
-		tab2spc = false,
-		tabs    = 4    ,
-		trim    = false,
-	}
+	ret.conf = {}
+	for k, v in pairs(state.conf_defs) do ret.conf[k] = v.def end
 
 	if path then
 		ret:set_path(path)

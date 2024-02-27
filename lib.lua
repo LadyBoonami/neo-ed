@@ -14,6 +14,11 @@ rl.set_options{
 	keeplines  = 10,
 }
 
+function m.assert(pred, msg)
+	if not pred then m.error(msg) end
+	return pred
+end
+
 function m.dup(t)
 	local ret = {}
 	for k, v in pairs(t) do ret[k] = v end
@@ -90,7 +95,7 @@ function m.pipe(cmd, stdin)
 		pu.close(p2c_r)
 		pu.close(c2p_w)
 
-		assert(pu.execp("/bin/sh", {"-c", cmd}))
+		m.assert(pu.execp("/bin/sh", {"-c", cmd}))
 
 	else
 		pu.close(p2c_r)
