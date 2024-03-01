@@ -104,11 +104,18 @@ function m.core_editing(state)
 
 	table.insert(state.cmds.line, {"^i$", function(m, a)
 		state.curr:change(function(buf)
-			buf:seek(a - 1)
+			local first = true
+			buf:seek(a)
 			while true do
 				local pre = buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos() + 1) or ""
 				local s = buf:get_input({pre})
-				if s then buf:insert({text = s}) else break end
+				if s then
+					if first then buf:seek(a - 1) end
+					first = false
+					buf:insert({text = s})
+				else
+					break
+				end
 			end
 		end)
 	end, "insert lines before"})
