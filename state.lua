@@ -59,6 +59,8 @@ function mt.__index:cmd(s)
 	end
 
 	local function cmd2(a, b, s)
+		s = s:match("^%s*(.*)$")
+
 		local b_, s_ = lib.match{s = s, choose = self.cmds.addr.cont, def = function() end, args = {b}}
 		if b_ then return cmd2(a, b_, s_) end
 
@@ -70,6 +72,8 @@ function mt.__index:cmd(s)
 	end
 
 	local function cmd1(a, s)
+		s = s:match("^%s*(.*)$")
+
 		local a_, s_ = lib.match{s = s, choose = self.cmds.addr.cont, def = function() end, args = {a}}
 		if a_ then return cmd1(a_, s_) end
 
@@ -92,6 +96,8 @@ function mt.__index:cmd(s)
 	end
 
 	local function cmd0(s)
+		s = s:match("^%s*(.*)$")
+
 		local a, b, s_ = lib.match{s = s, choose = self.cmds.addr.range, def = function() end}
 		if a then return cmd2(a, b, s_) end
 
