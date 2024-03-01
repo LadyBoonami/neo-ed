@@ -165,19 +165,27 @@ function m.core_editing(state)
 
 	table.insert(state.cmds.range_line, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
 		state.curr:change(function(buf)
+			local ctr = 0
 			buf:seek(b)
 			buf:map(function(_, l)
+				local ctr_ = 0
 				if m[4]:find("g") then
-					l.text = l.text:gsub(m[2], m[3])
+					l.text, ctr_ = l.text:gsub(m[2], m[3])
 				elseif tonumber(m[4]) then
 					local pos = lib.find_nth(l.text, m[2], tonumber(m[4]))
-					if pos then l.text = l.text:sub(1, pos - 1) .. l.text:sub(pos):gsub(m[2], m[3], 1) end
+					if pos then
+						local tmp
+						tmp, ctr_ = l.text:sub(pos):gsub(m[2], m[3], 1)
+						l.text = l.text:sub(1, pos - 1) .. tmp
+					end
 				elseif m[4] == "" then
-					l.text = l.text:gsub(m[2], m[3], 1)
+					l.text, ctr_ = l.text:gsub(m[2], m[3], 1)
 				else
 					lib.error("could not parse flags: " .. m[4])
 				end
+				ctr = ctr + ctr_
 			end, a, b)
+			if ctr == 0 then lib.error("substitution failed") end
 		end)
 	end, "substitute text using Lua gsub"})
 
