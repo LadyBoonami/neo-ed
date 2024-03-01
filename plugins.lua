@@ -210,6 +210,10 @@ function m.core_editing(state)
 		end)
 	end, "indent lines (by amount of steps)"})
 
+	table.insert(state.cmds.line, {"^=$", function(m, a)
+		print(a)
+	end, "print line number of addressed line"})
+
 	table.insert(state.hooks.input_post, function(l, buf)
 		if not buf.conf.tab2spc then return l end
 		local spc = (" "):rep(buf.conf.indent)
