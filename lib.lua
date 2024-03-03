@@ -38,6 +38,10 @@ function m.find_nth(s, pat, n)
 	return ret
 end
 
+function m.have_executable(name)
+	return os.execute("which " .. m.shellesc(name) .. " >/dev/null 2>&1")
+end
+
 function m.hook(h, ...)
 	if m.trace then
 		local info = debug.getinfo(2, "S")

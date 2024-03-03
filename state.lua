@@ -13,6 +13,12 @@ function mt.__index:add_conf(name, data)
 	self.conf_defs[name] = data
 end
 
+function mt.__index:check_executable(name, consequence)
+	local ok = lib.have_executable(name)
+	if not ok then self:warn("missing executable " .. name .. ", " .. consequence) end
+	return ok
+end
+
 function mt.__index:closed()
 	self.curr = self.files[self.curr.id] or self.files[self.curr.id - 1]
 	if not self.curr then os.exit(0) end
@@ -138,14 +144,11 @@ function mt.__index:main()
 		print()
 		local w = #tostring(#self.files)
 		for i, f in ipairs(self.files) do
-			print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[32m%s\x1b[0m mode, \x1b[32m%s\x1b[0m encoding%s, \x1b[34m%d\x1b[0m lines%s"):format(
+			print(("%s%" .. tostring(w) .. "d%s \x1b[33m%s\x1b[0m: \x1b[34m%d\x1b[0m lines%s"):format(
 				i == self.curr.id and "[" or " ",
 				i,
 				i == self.curr.id and "]" or " ",
 				f.path,
-				f.conf.mode,
-				f.conf.charset,
-				f.conf.crlf and " (DOS line endings)" or "",
 				f:length(),
 				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 			))
@@ -260,7 +263,6 @@ return function(files)
 
 	ret:add_conf("end_nl" , {type = "boolean", def = true   , descr = "add terminating newline after last line"   })
 	ret:add_conf("indent" , {type = "number" , def = 4      , descr = "indentation depth step (spaces)"           })
-	ret:add_conf("mode"   , {type = "string" , def = "text" , descr = "editing mode / file type"                  })
 	ret:add_conf("tab2spc", {type = "boolean", def = false  , descr = "indent using spaces, convert tabs on entry"})
 	ret:add_conf("tabs"   , {type = "number" , def = 4      , descr = "tab width"                                 })
 
@@ -273,21 +275,24 @@ return function(files)
 		confdir = os.getenv("HOME") .. "/.config"
 	end
 	ret.config_dir = confdir .. "/neo-ed"
-	ret.config_file = ret.config_dir .. "/config.lua"
+	ret.init_file = ret.config_dir .. "/init.lua"
 
-	local ok, _, errno = posix.unistd.access(ret.config_file, "r")
+	local ok, _, errno = posix.unistd.access(ret.init_file, "r")
 	if not ok and errno == posix.errno.ENOENT then
 		while true do
-			local r = lib.readline("No configuration file found. Create a default? (y/n) ")
+			local r = lib.readline("No initialization file found. Create file with defaults (y) or just use the defaults (n) ? (y/n) ")
 			if r == "n" then
-				require("neo-ed.plugins").core(ret)
+				require("neo-ed.plugins").def(ret)
 				break
 			else
 				lib.assert(os.execute("mkdir -p " .. lib.shellesc(confdir .. "/neo-ed"), "cannot create config dir"))
-				local h <close> = io.open(ret.config_file, "w")
-				h:write((require("neo-ed.default_config")))
-				print("Default configuration file has been created at " .. ret.config_file)
-				print("Use command :config to edit it anytime, then :reload to apply changes.")
+				local h <close> = io.open(ret.init_file, "w")
+				h:write('local state = ...', '\n')
+				h:write('local plugins = require "neo-ed.plugins"', '\n')
+				h:write('', '\n')
+				h:write('-- enable default plugins', '\n')
+				h:write('plugins.def(state)', '\n')
+				print("Default initialization file has been created at " .. ret.init_file)
 				lib.readline("Press Enter to continue ... ")
 				ok = true
 				break
@@ -296,14 +301,14 @@ return function(files)
 	end
 
 	if ok then
-		local f, err = loadfile(ret.config_file)
+		local f, err = loadfile(ret.init_file)
 		if not f then
-			print("error loading config file: " .. err)
+			print("error loading init file: " .. err)
 			lib.readline("Press Enter to continue ... ")
 		else
 			local ok, err = xpcall(f, lib.traceback, ret)
 			if not ok then
-				print("error running config file: " .. err)
+				print("error running init file: " .. err)
 				lib.readline("Press Enter to continue ... ")
 			end
 		end
