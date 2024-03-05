@@ -75,4 +75,8 @@ return function(state)
 			  `insert_final_newline`: set to `true` to save the file with a final newline
 		]]
 	end, "show editorconfig help"})
+
+	table.insert(state.cmds.file, {"^:econf", function()
+		state:load(state.config_dir .. "/.editorconfig"):print()
+	end, "open global editorconfig file"})
 end
