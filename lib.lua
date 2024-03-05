@@ -78,6 +78,18 @@ function m.match(args)
 	return args.def(args.s, table.unpack(args.args))
 end
 
+local space_lookup = {" "}
+for i = 2, 10 do space_lookup[i] = space_lookup[i - 1] .. space_lookup[i - 1] end
+
+function m.pad(s, l, padRight)
+	for i = #space_lookup, 1, -1 do
+		if utf8.len(s) + utf8.len(space_lookup[i]) <= l then
+			s = padRight and s .. space_lookup[i] or space_lookup[i] .. s
+		end
+	end
+	return s
+end
+
 function m.patesc(s)
 	return s:gsub("[%^$()%%.[%]*+%-?]", "%%%1")
 end
