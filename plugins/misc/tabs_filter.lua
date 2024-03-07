@@ -51,6 +51,7 @@ return function(state)
 			for _, h in ipairs(b.history) do h.printed = nil end
 			return v
 		end,
+		drop_cache = true,
 	})
 
 	table.insert(state.print.pre, function(lines, b)

@@ -3,7 +3,7 @@ local lib = require "neo-ed.lib"
 return function(state)
 	if not state:check_executable("pygmentize", "disabling syntax highlighting") then return end
 
-	state:add_conf("pygments_mode", {type = "string", def = "", descr = "pygments highlighting mode"})
+	state:add_conf("pygments_mode", {type = "string", def = "", descr = "pygments highlighting mode", drop_cache = true})
 
 	state.print.highlight = function(lines, curr)
 		if curr.conf.pygments_mode ~= "" then

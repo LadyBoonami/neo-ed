@@ -261,10 +261,10 @@ return function(files)
 	ret.errors   = {}
 	ret.warnings = {}
 
-	ret:add_conf("end_nl" , {type = "boolean", def = true   , descr = "add terminating newline after last line"   })
-	ret:add_conf("indent" , {type = "number" , def = 4      , descr = "indentation depth step (spaces)"           })
-	ret:add_conf("tab2spc", {type = "boolean", def = false  , descr = "indent using spaces, convert tabs on entry"})
-	ret:add_conf("tabs"   , {type = "number" , def = 4      , descr = "tab width"                                 })
+	ret:add_conf("end_nl" , {type = "boolean", def = true   , descr = "add terminating newline after last line"                      })
+	ret:add_conf("indent" , {type = "number" , def = 4      , descr = "indentation depth step (spaces)"           , drop_cache = true})
+	ret:add_conf("tab2spc", {type = "boolean", def = false  , descr = "indent using spaces, convert tabs on entry", drop_cache = true})
+	ret:add_conf("tabs"   , {type = "number" , def = 4      , descr = "tab width"                                 , drop_cache = true})
 
 	local confdir = os.getenv("XDG_CONFIG_HOME")
 	if not confdir and os.getenv("SUDO_USER") then

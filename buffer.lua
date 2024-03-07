@@ -12,6 +12,13 @@ local mt = {
 --  - nprev: number of elements before this, if not after current buffer position
 --  - nnext: number of elements after this, if not before current buffer position
 
+local function mkcache()
+	return {
+		content = {},
+		cursor  = {},
+	}
+end
+
 function mt.__index:addr(s, loc)
 	local function cont(a, s)
 		local a_, s_ = lib.match{s = s, choose = self.state.cmds.addr.cont, def = function() end, args = {a}}
@@ -79,6 +86,7 @@ function mt.__index:conf_set(k, v)
 	end
 
 	self.conf[k] = (def.on_set or function(_, v) return v end)(self, parse_val(v))
+	if def.drop_cache then self:drop_cache() end
 end
 
 -- Create an undo point, then apply function `f` that changes the buffer. If `f` fails, roll back the changes.
@@ -113,6 +121,7 @@ function mt.__index:delete()
 		newdata.curr       = lib.dup(self.data.curr.next)
 		newdata.curr.prev  = self.data.curr.prev
 		newdata.curr.nprev = self.data.curr.nprev
+		newdata.cache      = mkcache()
 		self.data          = newdata
 
 	elseif self.data.curr.prev then
@@ -120,7 +129,7 @@ function mt.__index:delete()
 		newdata.curr       = lib.dup(self.data.curr.prev)
 		newdata.curr.next  = self.data.curr.next
 		newdata.curr.nnext = self.data.curr.nnext
-		newdata.curr.cache = {}
+		newdata.cache      = mkcache()
 		self.data          = newdata
 
 	end
@@ -268,6 +277,16 @@ function mt.__index:drop(first, last)
 	for _ = first, last do self:delete() end
 end
 
+function mt.__index:drop_cache()
+	function go(data)
+		data.cache.content = {}
+		data.cache.cursor  = {}
+	end
+
+	go(self.data)
+	for _, v in ipairs(self.history) do go(v) end
+end
+
 function mt.__index:extract(first, last, data)
 	data  = data  or self.data
 	first = first or 1
@@ -303,6 +322,7 @@ function mt.__index:insert(elem)
 	newdata.curr.next  = newprev.next
 	newdata.curr.nprev = newprev.nprev + 1
 	newdata.curr.nnext = newprev.nnext
+	newdata.cache      = mkcache()
 	newprev.next       = nil
 	newprev.nnext      = nil
 	self.data          = newdata
@@ -398,6 +418,7 @@ function mt.__index:map(f, first, last)
 	local newdata = {curr = lib.dup(self.data.curr)}
 	newdata.curr.prev = head(newdata.curr.prev)
 	newdata.curr.next = tail(newdata.curr.next, newdata.curr.nprev + 2)
+	newdata.cache     = mkcache()
 	if first <= newdata.curr.nprev + 1 and newdata.curr.nprev + 1 <= last then f(newdata.curr.nprev + 1, newdata.curr) end
 	self.data = newdata
 end
@@ -429,7 +450,7 @@ end
 
 function mt.__index:print_lines(data)
 	data = data or self.data
-	if data.printed then return data.printed end
+	if data.cache.content.printed then return data.cache.content.printed end
 
 	local prof = lib.profiler("print pipeline")
 
@@ -451,7 +472,7 @@ function mt.__index:print_lines(data)
 	go(self.state.print.highlight)
 	for _, f in ipairs(self.state.print.post) do go(f) end
 
-	data.printed = ret
+	data.cache.content.printed = ret
 
 --	prof:print()
 
@@ -510,10 +531,11 @@ function mt.__index:seek(n)
 		local newdata = {curr = lib.dup(self.data.curr.next)}
 		local newprev =         lib.dup(self.data.curr     )
 
-		newdata.curr.prev  = newprev
-		newdata.curr.nprev = newprev.nprev + 1
-		newdata.curr.hide  = nil
-		newdata.printed    = self.data.printed
+		newdata.curr.prev     = newprev
+		newdata.curr.nprev    = newprev.nprev + 1
+		newdata.curr.hide     = nil
+		newdata.cache         = mkcache()
+		newdata.cache.content = self.data.cache.content
 
 		newprev.next  = nil
 		newprev.nnext = nil
@@ -525,10 +547,11 @@ function mt.__index:seek(n)
 		local newdata = {curr = lib.dup(self.data.curr.prev)}
 		local newnext =         lib.dup(self.data.curr     )
 
-		newdata.curr.next  = newnext
-		newdata.curr.nnext = newnext.nnext + 1
-		newdata.curr.hide  = nil
-		newdata.printed    = self.data.printed
+		newdata.curr.next     = newnext
+		newdata.curr.nnext    = newnext.nnext + 1
+		newdata.curr.hide     = nil
+		newdata.cache         = mkcache()
+		newdata.cache.content = self.data.cache.content
 
 		newnext.prev  = nil
 		newnext.nprev = nil
@@ -540,14 +563,14 @@ end
 function mt.__index:select(first, last)
 	local oldfirst = self:sel_first()
 	local oldlast  = self:sel_last ()
-	local printed  = self.data.printed
+	local ccache   = self.data.cache.content
 	self:seek(last)
 	self:map(
 		function(n, l) l.hide = not (first <= n and n <= last) end,
 		math.min(oldfirst, first),
 		math.max(oldlast , last )
 	)
-	self.data.printed = printed
+	self.data.cache.content = ccache
 end
 
 function mt.__index:sel_first()
@@ -598,7 +621,7 @@ end
 
 return function(state, path)
 	local ret = setmetatable({}, mt)
-	ret.data = {curr = {nprev = -1, nnext = 0, cache = {}}}
+	ret.data = {curr = {nprev = -1, nnext = 0}, cache = mkcache()}
 
 	ret.state = state
 
