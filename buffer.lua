@@ -19,7 +19,7 @@ local function mkcache()
 	}
 end
 
-function mt.__index:addr(s, loc)
+function mt.__index:addr(s)
 	local function cont(a, s)
 		local a_, s_ = lib.match{s = s, choose = self.state.cmds.addr.cont, def = function() end, args = {a}}
 		if a_ then return cont(a_, s_) end
@@ -29,13 +29,7 @@ function mt.__index:addr(s, loc)
 
 	local a, s_ = lib.match{s = s, choose = self.state.cmds.addr.prim, def = function() end}
 	if a then
-		a = cont(a, s_)
-		if loc then
-			local sel_a = self:sel_first()
-			local sel_b = self:sel_last ()
-			if not (sel_a <= a and a <= sel_b) then lib.error(a .. " not in range [" .. sel_a .. ", " .. sel_b .. "]") end
-		end
-		return a
+		return cont(a, s_)
 	end
 	lib.error("could not parse: " .. s)
 end

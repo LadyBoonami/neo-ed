@@ -108,7 +108,7 @@ return function(state)
 
 	table.insert(state.cmds.range_line, {"^m(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
-			local dst = buf:addr(m[1], true)
+			local dst = buf:addr(m[1])
 			if dst > b then dst = dst - (b - a + 1)
 			elseif dst > a then lib.error("destination inside source range")
 			end
@@ -156,7 +156,7 @@ return function(state)
 
 	table.insert(state.cmds.range_line, {"^t(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
-			local dst = buf:addr(m[1], true)
+			local dst = buf:addr(m[1])
 			buf:append(buf:extract(a, b), dst)
 		end)
 	end, "copy (transfer) lines"})
