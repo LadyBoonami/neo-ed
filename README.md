@@ -50,11 +50,11 @@ An empty command styles and prints this selection, and the `f` and `F` commands 
 ### Line Addresses
 
 - A number stands for the line with that number.
-- `^^` stands for the first line of the file.
-- `^` stands for the first line of the current selection.
+- `^` stands for the first line of the file.
+- `[` stands for the first line of the current selection.
 - `.` stands for the current line.
-- `$` stands for the last line of the current selection.
-- `$$` stands for the last line in the file.
+- `]` stands for the last line of the current selection.
+- `$` stands for the last line in the file.
 - A `+` sign stands for the line after the current one.
 - A `-` sign stands for the line before the current one.
 - A number preceded by a `+` sign stands for the current line plus that number of lines.
@@ -75,8 +75,8 @@ An empty command styles and prints this selection, and the `f` and `F` commands 
 
 ### Range Shorthands
 
-- A `%` is short for `^,$`, i.e. the entire selection.
-- A `%%` is short for `^^,$$`, i.e. the entire file.
+- A `@` is short for `[,]`, i.e. the entire selection.
+- A `%` is short for `^,$`, i.e. the entire file.
 
 ### Ranges
 
