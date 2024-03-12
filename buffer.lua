@@ -91,10 +91,10 @@ function mt.__index:change(f)
 		local ok, err = xpcall(f, lib.traceback, self)
 		self._changing = nil
 		if not ok then
-			self:undo()
+			self:undo(true)
 			lib.error(err)
 		end
-		self:diff_show()
+		self:diff_show(self:diff())
 	end
 end
 
@@ -138,8 +138,17 @@ function mt.__index:diff(fst, snd)
 	local fst_lines = self:all(fst)
 	local snd_lines = self:all(snd)
 
-	local fst_printed = self:print_lines(fst)
-	local snd_printed = self:print_lines(snd)
+	local fst_printed = self:print_data(fst)
+	local snd_printed = self:print_data(snd)
+
+	return self:diff_lines(fst_lines, snd_lines, fst_printed, snd_printed)
+end
+
+function mt.__index:diff_lines(fst_lines, snd_lines, fst_printed, snd_printed)
+	if not fst_lines   then fst_lines, fst_printed = self:all(data), self:print_data(data) end
+	if not snd_lines   then snd_lines, snd_printed = self:all(data), self:print_data(data) end
+	if not fst_printed then fst_printed = lib.dup(fst_lines, 2); self:print_lines(fst_printed) end
+	if not snd_printed then snd_printed = lib.dup(snd_lines, 2); self:print_lines(snd_printed) end
 
 	local function mkkeep(i, j, dist) return {dist = dist, op = "=", text = fst_lines[i].text, pretty = fst_printed[i].text, nfst = i, nsnd = j} end
 	local function mkadd (i, j, dist) return {dist = dist, op = "+", text = snd_lines[j].text, pretty = snd_printed[j].text,           nsnd = j} end
@@ -223,14 +232,15 @@ function mt.__index:diff(fst, snd)
 	return ret
 end
 
-function mt.__index:diff_show(ctx, fst, snd)
+function mt.__index:diff_show(d, ctx)
 	ctx = ctx or 3
 
-	local d = self:diff(fst, snd, true)
-	local w = math.max(#tostring(self:length()), #tostring(self:length(self.history[#self.history].data)))
-	local filler = ("."):rep(w)
-	local sep = (" "):rep(80)
-	if os.execute("which tput >/dev/null 2>&1") then sep = (" "):rep(tonumber(lib.pipe("tput cols", ""))) end
+	local wn = #tostring(#d)
+	local filler = ("."):rep(wn)
+
+	local wt = 80
+	if os.execute("which tput >/dev/null 2>&1") then wt = tonumber(lib.pipe("tput cols", "")) end
+	local sep = ("▄"):rep(wt)
 
 	for i = 1, #d do
 		local show = false
@@ -242,19 +252,19 @@ function mt.__index:diff_show(ctx, fst, snd)
 
 		if show then
 			if not d[i-1] or d[i-1].op ~= d[i].op then
-				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[42m", sep, "\x1b[0m"))
-				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[41m", sep, "\x1b[0m"))
+				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[32m", sep, "\x1b[0m"))
+				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[31m", sep, "\x1b[0m"))
 				end
 			end
 
-			    if d[i].op == "+" then print(("%s%" .. tostring(w) .. "d%s│%s%s"):format("\x1b[42;30m", d[i].nsnd, "\x1b[0;33m", "\x1b[0m", d[i].pretty))
-			elseif d[i].op == "-" then print(("%s%" .. tostring(w) .. "s%s│%s%s"):format("\x1b[41;30m", ""       , "\x1b[0;33m", "\x1b[0m", d[i].pretty))
-			else                       print(("%s%" .. tostring(w) ..   "d│%s%s"):format("\x1b[33m"   , d[i].nsnd,               "\x1b[0m", d[i].pretty))
+			    if d[i].op == "+" then print(("%s%" .. tostring(wn) .. "d%s│%s%s"):format("\x1b[42;30m", d[i].nsnd, "\x1b[0;33m", "\x1b[0m", d[i].pretty))
+			elseif d[i].op == "-" then print(("%s%" .. tostring(wn) .. "s%s│%s%s"):format("\x1b[41;30m", ""       , "\x1b[0;33m", "\x1b[0m", d[i].pretty))
+			else                       print(("%s%" .. tostring(wn) ..   "d│%s%s"):format("\x1b[33m"   , d[i].nsnd,               "\x1b[0m", d[i].pretty))
 			end
 
 			if not d[i+1] or d[i+1].op ~= d[i].op then
-				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[42m", sep, "\x1b[0m"))
-				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[41m", sep, "\x1b[0m"))
+				    if d[i].op == "+" then print(("%s%s%s"):format("\x1b[7;32m", sep, "\x1b[0m"))
+				elseif d[i].op == "-" then print(("%s%s%s"):format("\x1b[7;31m", sep, "\x1b[0m"))
 				end
 			end
 
@@ -428,7 +438,7 @@ function mt.__index:print(lines)
 		for i = self:sel_first(), self:sel_last() do lines[i] = true end
 	end
 
-	local printed = self:print_lines()
+	local printed = self:print_data()
 
 	lib.hook(self.state.hooks.print_pre, self, printed, lines)
 
@@ -442,21 +452,24 @@ function mt.__index:print(lines)
 	lib.hook(self.state.hooks.print_post, self, printed, lines)
 end
 
-function mt.__index:print_lines(data)
+function mt.__index:print_data(data)
 	data = data or self.data
 	if data.cache.content.printed then return data.cache.content.printed end
 
-	local prof = lib.profiler("print pipeline")
-
-	prof:start("preparations")
 	local ret = self:all(data)
-	prof:stop()
+	self:print_lines(ret)
+	data.cache.content.printed = ret
+	return ret
+end
+
+function mt.__index:print_lines(lines)
+	local prof = lib.profiler("print pipeline")
 
 	local function go(f)
 		local info = debug.getinfo(f, "S")
 
 		prof:start(info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
-		local ok, err = xpcall(f, lib.traceback, ret, self)
+		local ok, err = xpcall(f, lib.traceback, lines, self)
 		prof:stop()
 
 		if not ok then self.state:warn("print function failed: " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ": " .. err) end
@@ -466,11 +479,7 @@ function mt.__index:print_lines(data)
 	go(self.state.print.highlight)
 	for _, f in ipairs(self.state.print.post) do go(f) end
 
-	data.cache.content.printed = ret
-
 --	prof:print()
-
-	return ret
 end
 
 function mt.__index:pos()
@@ -590,11 +599,11 @@ function mt.__index:set_path(path)
 	self.modified = true
 end
 
-function mt.__index:undo(n)
+function mt.__index:undo(n, quiet)
 	n = n or #self.history
 	if not self.history[n] then lib.error("undo point not found") end
 
-	self:diff_show(nil, self.data, self.history[n].data)
+	if not quiet then self:diff_show(self:diff(self.data, self.history[n].data)) end
 
 	while #self.history > n do table.remove(self.history) end
 	local h = table.remove(self.history)

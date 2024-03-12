@@ -19,9 +19,13 @@ function m.assert(pred, msg)
 	return pred
 end
 
-function m.dup(t)
+function m.dup(t, n)
+	n = n or 1
+
 	local ret = {}
-	for k, v in pairs(t) do ret[k] = v end
+	for k, v in pairs(t) do
+		if type(v) == "table" and n > 1 then ret[k] = m.dup(v, n - 1) else ret[k] = v end
+	end
 	return ret
 end
 

@@ -1,7 +1,7 @@
 local lib = require "neo-ed.lib"
 
 return function(state)
-	if not state:check_executable("git", "disabling blame command") then return end
+	if not state:check_executable("git", "disabling git plugin") then return end
 
 	table.insert(state.cmds.range_local, {"^:blame$", function(m, a, b)
 		local contents = {}
@@ -66,4 +66,16 @@ return function(state)
 			))
 		end
 	end, "run git blame"})
+
+	table.insert(state.cmds.file, {"^:diff *([^ ]*)$", function(m)
+		local rev = m[1] == "" and "HEAD" or m[1]
+
+		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. state.curr.path), "")
+		local orig_lines = {}
+
+		for l in orig:gmatch("[^\n]*") do table.insert(orig_lines, {text = l:gsub("\r", "")}) end
+		if orig_lines[#orig_lines].text == "" then table.remove(orig_lines) end
+
+		state.curr:diff_show(state.curr:diff_lines(orig_lines, nil))
+	end, "run git diff against a given refspec (default HEAD)"})
 end
