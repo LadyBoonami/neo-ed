@@ -235,6 +235,8 @@ end
 function mt.__index:diff_show(d, ctx)
 	ctx = ctx or 3
 
+	lib.hook(self.state.hooks.print_pre, self)
+
 	local wn = #tostring(#d)
 	local filler = ("."):rep(wn)
 
@@ -273,6 +275,8 @@ function mt.__index:diff_show(d, ctx)
 
 		end
 	end
+
+	lib.hook(self.state.hooks.print_post, self)
 end
 
 function mt.__index:drop(first, last)
@@ -440,7 +444,7 @@ function mt.__index:print(lines)
 
 	local printed = self:print_data()
 
-	lib.hook(self.state.hooks.print_pre, self, printed, lines)
+	lib.hook(self.state.hooks.print_pre, self)
 
 	local w = #tostring(#printed)
 	for i, l in ipairs(printed) do
@@ -449,7 +453,7 @@ function mt.__index:print(lines)
 		end
 	end
 
-	lib.hook(self.state.hooks.print_post, self, printed, lines)
+	lib.hook(self.state.hooks.print_post, self)
 end
 
 function mt.__index:print_data(data)

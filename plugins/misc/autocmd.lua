@@ -15,22 +15,17 @@ return function(state)
 		return use[s] and s or nil
 	end
 
-	state:add_conf("autocmd_load_post", {type = "string", def = "", descr = "command to run after loading a file"})
-	state:add_conf("autocmd_save_pre" , {type = "string", def = "", descr = "command to run before saving a file"})
-	state:add_conf("autocmd_save_post", {type = "string", def = "", descr = "command to run after saving a file" })
+	local function add_autocmd(hook)
+		state:add_conf("autocmd_" .. hook, {type = "string", def = "", descr = "command to run in the " .. hook .. " hook"})
+		table.insert(state.hooks[hook], function(b)
+			local cmd = validate(b.conf["autocmd_" .. hook])
+			if cmd then b.state:cmd(cmd) end
+		end)
+	end
 
-	table.insert(state.hooks.load_post, function(b)
-		local cmd = validate(b.conf.autocmd_load_post)
-		if cmd then b.state:cmd(cmd) end
-	end)
-
-	table.insert(state.hooks.save_pre, function(b)
-		local cmd = validate(b.conf.autocmd_save_pre)
-		if cmd then b.state:cmd(cmd) end
-	end)
-
-	table.insert(state.hooks.save_post, function(b)
-		local cmd = validate(b.conf.autocmd_save_post)
-		if cmd then b.state:cmd(cmd) end
-	end)
+	add_autocmd "close"
+	add_autocmd "print_pre"
+	add_autocmd "print_post"
+	add_autocmd "save_pre"
+	add_autocmd "save_post"
 end

@@ -233,17 +233,15 @@ return function(files)
 	}
 
 	ret.hooks = {
-		close      = {},
-		diff_pre   = {},
-		diff_post  = {},
-		input_post = {},
-		load_pre   = {},
-		load_post  = {},
-		print_pre  = {},
-		print_post = {},
-		save_pre   = {},
-		save_post  = {},
-		undo_point = {},
+		close      = {}, -- triggered before closing a buffer
+		input_post = {}, -- ???
+		load_pre   = {}, -- triggered before reading a file
+		load_post  = {}, -- triggered after reading a file
+		print_pre  = {}, -- triggered before printing code
+		print_post = {}, -- triggered after printing code
+		save_pre   = {}, -- triggered before saving a buffer to a file
+		save_post  = {}, -- triggered after saving a buffer to a file
+		undo_point = {}, -- triggered before inserting an undo point
 	}
 
 	ret.protocols = {}

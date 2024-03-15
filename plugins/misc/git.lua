@@ -48,6 +48,8 @@ return function(state)
 
 		aw = math.min(aw, 40)
 
+		lib.hook(state.hooks.print_pre, state.curr)
+
 		for i, row in ipairs(r) do
 			local dup = not not (r[i-1] and r[i-1].hash == row.hash)
 			print(("%s%s%s %s%-" .. tostring(aw) .. "." .. tostring(aw) .. "s%s %s%s%s %s%" .. tostring(lw) .. "d│%s%s"):format(
@@ -66,9 +68,11 @@ return function(state)
 				row.text
 			))
 		end
+
+		lib.hook(state.hooks.print_post, state.curr)
 	end, "run git blame"})
 
-	table.insert(state.cmds.file, {"^:diff *([^ ]*)$", function(m)
+	table.insert(state.cmds.file, {"^:git diff *([^ ]*)$", function(m)
 		local rev = m[1] == "" and "HEAD" or m[1]
 
 		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. state.curr.path), "")
