@@ -17,7 +17,8 @@ return function(state)
 		)
 
 		local pos = 1
-		local lines = state.curr:print_lines()
+		local lines = state.curr:all()
+		state.curr:print_lines(lines)
 
 		local lw = #tostring(state.curr:length())
 		local aw = 0
