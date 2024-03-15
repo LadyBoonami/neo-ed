@@ -76,7 +76,7 @@ return function(state)
 		]]
 	end, "show editorconfig help"})
 
-	table.insert(state.cmds.file, {"^:econf", function()
+	table.insert(state.cmds.file, {"^:econf global", function()
 		state:load(state.config_dir .. "/.editorconfig"):print()
 	end, "open global editorconfig file"})
 end

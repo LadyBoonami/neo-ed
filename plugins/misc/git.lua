@@ -3,7 +3,7 @@ local lib = require "neo-ed.lib"
 return function(state)
 	if not state:check_executable("git", "disabling git plugin") then return end
 
-	table.insert(state.cmds.range_local, {"^:blame$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^:git blame$", function(m, a, b)
 		local contents = {}
 		state.curr:inspect(function(_, l) table.insert(contents, l.text) end)
 		table.insert(contents, "")

@@ -37,10 +37,14 @@ return function(state)
 	table.insert(state.hooks.load_post, function(curr)
 		if curr.path and curr.conf.pygments_mode == "" then
 			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
-			curr:conf_set("pygments_mode", h:read("l"))
+			local mode = h:read("l")
+			if mode == "text" then
+				guess(curr)
+			else
+				curr:conf_set("pygments_mode", mode)
+			end
 		end
-		if curr:length() > 100 and (curr.conf.pygments_mode == "") then guess(curr) end
 	end)
 
-	table.insert(state.cmds.file, {"^:pygments_guess$", function() guess(state.curr) end, "guess file type from content"})
+	table.insert(state.cmds.file, {"^:pyg guess$", function() guess(state.curr) end, "guess file type from content"})
 end
