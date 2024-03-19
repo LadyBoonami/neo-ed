@@ -139,7 +139,7 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
   If `<flags>` contains `s`, prefix all new lines with the leading whitespace of the line they stem from.
 - `m<addr>`: move selected lines after `<addr>`.
 - `s<sep><pattern><sep><replacement><sep><mode>`: in the selected lines, replace lua pattern `<pattern>` with `<replacement>`.
-  `<sep>` may be any punctuation character (usually `/`).
+  `<sep>` may be any character (usually `/`).
   Only replaces the first occurence by default.
   If `<mode>` is `g`, replaces all occurences.
   If `<mode>` is a number, replace that occurence.
