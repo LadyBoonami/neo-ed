@@ -58,9 +58,6 @@ address modifiers. This results in similar behaviour to POSIX addresses,
 but some differences:
 
 - As a base address, RE forward search starts from the beginning of the file.
-- As an address modifier, RE forward and backward search start from the
-  modified line, but do not currently wrap around at the beginning or end
-  of the file. **TODO**?
 - Use of a number as an address modifier without prior `+` or `-` is not
   supported.
 - Specifying more addresses than the command takes is currently not supported.

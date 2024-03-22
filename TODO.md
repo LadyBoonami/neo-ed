@@ -20,7 +20,6 @@ The following incompatibilities with POSIX remain to be fixed:
 
 ### Miscellaneous
 
-- RE search wrap around (trivial)
 - Remap commands: `e` as in POSIX, `o` to open a new file/buffer (simple)
 - Remap commands: `f` as in POSIX, `F` to select around a line, `S` to select lines (simple)
 - `e` without arguments to re-read file (trivial)
