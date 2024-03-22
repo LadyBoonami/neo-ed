@@ -1,16 +1,65 @@
-# Plugin ideas
+# TODO
 
-- autosave
-- tutorial
+List of tasks to complete before the next release.
 
-# Other
+## POSIX compatibility
 
-- API documentation
-- Implement `l` properly (not as an alias for default print)
+The following incompatibilities with POSIX remain to be fixed:
 
-# Someday / Maybe
+### Process I/O
 
-- proper tab handling?
-- readline replacement?
-- language-specific (LSP?)
+- read process stdout using `e !foo` (simple)
+- read process stdout using `r !foo` (simple)
+- write process stdin using `w !foo` (simple)
+
+### Parser modifications
+
+- RE escaped delimiter inside (hard to impossible to express with current regex-based parser) (hard)
+- Multiple commands inside global command (hard)
+- `a`, `i`, `c` inside global command (need to change how commands read their input) (very hard)
+
+### Miscellaneous
+
+- RE search wrap around (trivial)
+- Remap commands: `e` as in POSIX, `o` to open a new file/buffer (simple)
+- Remap commands: `f` as in POSIX, `F` to select around a line, `S` to select lines (simple)
+- `e` without arguments to re-read file (trivial)
+- `r` without arguments to read current file (simple)
+- `r` command sets filename if appropriate (simple)
+- `s` command sets the current line to the last changed line (simple)
+- `w` command can write parts of the file (moderate)
+- Multi-line `c` command (history semantics?) (simple)
+
+## Quality of life
+
+- `e`, `r`, `w`, etc. should report number of bytes (and lines?) (simple)
+- `<` and `>` should allow character repetitions, e.g. `>>` as a synonym for `>2` (simple)
+- Escape control characters in print pipeline (simple)
+- Allow line marks with more complex labels than single characters (moderate)
+- Tutorial (moderate)
+- Installation process (moderate)
+- More configurability for base functionality (e.g. theming) (simple)
+
+## API
+
+- Documentation of publicly available functions (moderate)
+- Gutter formatting hooks (simple)
+- Gutter info (simple)
+- Function to print buffer with additional gutter information (e.g. git blame) (simple)
+- Plugin manager (moderate)
+
+## Plugins
+
+- Language Server Protocol (hard)
+
+## Cleanup
+
+- `lib.profile_hooks`
+- "Current file name" functionality
+
+## Someday / Maybe
+
+- ctags plugin?
+- Proper tab handling?
+- More powerful `readline` replacement / bindings?
 - Somehow guard against `Ctrl-C Ctrl-C` readline-induced program closing?

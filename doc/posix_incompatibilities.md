@@ -3,9 +3,8 @@
 This report documents incompatibilities between `neo-ed`'s
 behaviour and the required behaviour of `ed`, as specified by
 [POSIX.1-2017](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/ed.html).
-
-Differences marked with **TODO** will probably be addressed at some point
-in the future, differences marked with **TODO**? might be.
+Not all of these incompatibilities are intended to stay, refer to the "POSIX
+compatibility" section in `TODO.md` for details.
 
 ## Options
 
@@ -95,12 +94,14 @@ with POSIX `ed`.
 as specified.
 
 `neo-ed` currently does not support using the delimiter character inside a
-regular expression. **TODO**
+regular expression.
 
 ### Change Command
 
 `neo-ed`'s change command only operates on a single line, and cannot be used
-to delete that line. Using address 0 is not supported.
+to delete that line.
+
+Using address 0 is not supported.
 
 ### Edit Command
 
@@ -109,10 +110,10 @@ between open files can be done via the `#n` command with buffer index `n`,
 starting at 1.
 
 Re-reading the current file using an `e` command without a file argument is
-currently not supported. **TODO**
+currently not supported.
 
 Reading the stdout of a command using `e !command` is currently not
-supported. **TODO**
+supported.
 
 ### Edit Without Checking Command
 
@@ -122,15 +123,15 @@ behaviour of the regular `e` command.
 ### Filename Command
 
 This command is currently not supported by `neo-ed`, the `f` command has a
-different meaning. **TODO**
+different meaning.
 
 ### Global Command
 
 `neo-ed` currently does not support executing multiple commands inside a
-global command. **TODO**
+global command.
 
 `neo-ed` currently does not support `a`, `i`, and `c` inside global commands
-in a meaningful way. **TODO**?
+in a meaningful way.
 
 `neo-ed` has a meaningful empty command, so the global command does not
 default to `p` for its command list.
@@ -169,7 +170,7 @@ after and before the base address respectively.
 
 The `l` command in `neo-ed` employs the print pipeline to format the lines. In
 `neo-ed`'s default settings, this format is unambiguous regarding whitespace,
-but different to the format described by POSIX. **TODO**: control characters
+but different to the format described by POSIX.
 
 ### Prompt Command
 
@@ -191,15 +192,15 @@ for changes.
 ### Read Command
 
 `neo-ed` currently does not support using the `r` command without any
-argument. **TODO**?
+argument.
 
 The `r` command currently does not set the file name if no file name is
-set. **TODO**?
+set.
 
 ### Substitute Command
 
 After a successful substitute command, `neo-ed` sets the last line of the
-specified range as the current line. **TODO**?
+specified range as the current line.
 
 `neo-ed` uses the Lua replacement sequences, `%n` for the `n`-th match. `&`
 and `\n` are not supported, as is the special meaning of `%` as the only
@@ -221,10 +222,10 @@ See Interactive Global Command.
 ### Write Command
 
 `neo-ed` currently only supports the write command without any addresses,
-i.e. writing the entire file. **TODO**
+i.e. writing the entire file.
 
 Using `!` to write to the standard input of a process is currently not
-supported. **TODO**
+supported.
 
 ### Shell Escape Command
 
