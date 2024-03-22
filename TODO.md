@@ -35,6 +35,7 @@ The following incompatibilities with POSIX remain to be fixed:
 - Tutorial (moderate)
 - Installation process (moderate)
 - More configurability for base functionality (e.g. theming) (simple)
+- Redesign `h` to not just show the sometimes cryptic Lua pattern of each command (moderate)
 
 ## API
 

@@ -27,6 +27,7 @@ function m.def(state)
 	require "neo-ed.plugins.misc.shell"        (state)
 	require "neo-ed.plugins.misc.ssh_url"      (state)
 	require "neo-ed.plugins.misc.tabs_filter"  (state)
+	require "neo-ed.plugins.misc.tutorial"     (state)
 
 	-- ensure correct load order, we don't want pygments to overwrite explicit editorconfig settings
 	require "neo-ed.plugins.misc.pygments"     (state)
