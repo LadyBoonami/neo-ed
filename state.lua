@@ -130,6 +130,10 @@ function mt.__index:err(s)
 	table.insert(self.errors, s)
 end
 
+function mt.__index:info(s)
+	table.insert(self.msgs, s)
+end
+
 function mt.__index:load(path)
 	local ret = require "neo-ed.buffer" (self, path)
 	table.insert(self.files, ret)
@@ -154,8 +158,10 @@ function mt.__index:main()
 			))
 		end
 
+		for _, v in ipairs(self.msgs    ) do print("\x1b[47;30m INFO \x1b[0m  "            .. v             ) end
 		for _, v in ipairs(self.warnings) do print("\x1b[43;30m WARNING \x1b[0m  \x1b[33m" .. v .. "\x1b[0m") end
-		for _, v in ipairs(self.errors  ) do print("\x1b[41;30m ERROR \x1b[0m  \x1b[31m" .. v .. "\x1b[0m") end
+		for _, v in ipairs(self.errors  ) do print("\x1b[41;30m ERROR \x1b[0m  \x1b[31m"   .. v .. "\x1b[0m") end
+		self.msgs     = {}
 		self.warnings = {}
 		self.errors   = {}
 
@@ -257,6 +263,7 @@ return function(files)
 
 	ret.conf_defs = {}
 
+	ret.msgs     = {}
 	ret.errors   = {}
 	ret.warnings = {}
 

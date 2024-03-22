@@ -53,15 +53,16 @@ function m.hook(h, ...)
 	end
 
 	for _, f in ipairs(h) do
+		local info = debug.getinfo(f, "S")
+
 		local before = posix.sys.time.gettimeofday()
 		local ok, msg = xpcall(f, m.traceback, ...)
 		local after = posix.sys.time.gettimeofday()
-		if not ok then print("hook failed: " .. msg) end
+		if not ok then print(("hook %s:%s-%s failed: %s"):format(info.short_src, info.linedefined, info.lastlinedefined, msg)) end
 
 		if m.profile_hooks then
-			local info = debug.getinfo(f, "S")
 			local delta = (after.tv_sec + after.tv_usec / 1000000) - (before.tv_sec + before.tv_usec / 1000000)
-			print("    " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined .. ":" .. delta)
+			print(("    %s:%s-%s %s"):format(info.short_src, info.linedefined, info.lastlinedefined, delta))
 		end
 	end
 end

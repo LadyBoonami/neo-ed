@@ -31,17 +31,19 @@ return function(state)
 	local function guess(curr)
 		local tmp = {}
 		curr:map(function(_, l) table.insert(tmp, l.text) end)
-		curr:conf_set("pygments_mode", lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*"))
+		local mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
+		curr:conf_set("pygments_mode", mode)
+		curr.state:info(("pygments thinks this is a %s%s%s file"):format("\x1b[34m", mode, "\x1b[0m"))
 	end
 
 	table.insert(state.hooks.path_post, function(curr)
 		local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
 		local mode = h:read("l")
-		if mode == "text" then
-			guess(curr)
-		else
-			curr:conf_set("pygments_mode", mode)
-		end
+		if mode ~= "text" then curr:conf_set("pygments_mode", mode) end
+	end)
+
+	table.insert(state.hooks.load_post, function(curr)
+		if curr.conf.pygments_mode == "" and curr:length() > 0 then guess(curr) end
 	end)
 
 	table.insert(state.cmds.file, {"^:pyg guess$", function() guess(state.curr) end, "guess file type from content"})
