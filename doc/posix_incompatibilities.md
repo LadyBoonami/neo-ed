@@ -77,11 +77,9 @@ address prefix altogether.
 
 `neo-ed` does not currently support the print suffixes `l`, `n`, and `p`.
 
-As `neo-ed` supports opening multiple files at once, there is no need to warn
-the user if the buffer has been modified since the last write operation and
-the `e` command is used. Instead of skipping the warning on the second `q`
-command, `neo-ed` requires a `Q` command to close the file if the buffer
-has been modified since the last write.
+Instead of skipping the warning on the second `e` or `q` command, `neo-ed`
+requires a `E` or `Q` command if the buffer has been modified since the
+last write.
 
 In `neo-ed`, an end-of-file in command mode is equivalent to a `qq` command,
 which closes all buffers and then the editor. The end result is the same as
@@ -102,20 +100,8 @@ Using address 0 is not supported.
 
 ### Edit Command
 
-In `neo-ed`, the edit command opens another file in parallel. Switching
-between open files can be done via the `#n` command with buffer index `n`,
-starting at 1.
-
-Re-reading the current file using an `e` command without a file argument is
-currently not supported.
-
 Reading the stdout of a command using `e !command` is currently not
 supported.
-
-### Edit Without Checking Command
-
-This command is not supported by `neo-ed`, as it is redundant with the
-behaviour of the regular `e` command.
 
 ### Filename Command
 

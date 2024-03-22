@@ -34,15 +34,13 @@ return function(state)
 		curr:conf_set("pygments_mode", lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*"))
 	end
 
-	table.insert(state.hooks.load_post, function(curr)
-		if curr.path and curr.conf.pygments_mode == "" then
-			local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
-			local mode = h:read("l")
-			if mode == "text" then
-				guess(curr)
-			else
-				curr:conf_set("pygments_mode", mode)
-			end
+	table.insert(state.hooks.path_post, function(curr)
+		local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
+		local mode = h:read("l")
+		if mode == "text" then
+			guess(curr)
+		else
+			curr:conf_set("pygments_mode", mode)
 		end
 	end)
 

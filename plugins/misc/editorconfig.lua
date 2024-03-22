@@ -44,13 +44,11 @@ return function(state)
 		end
 	end
 
-	table.insert(state.hooks.load_pre, function(b)
-		if b.path then
-			load_editorconfig_for(b, b.state.config_dir .. "/global")
-			local suf = b.path:match("[^/.]+(%.[^/]+)$")
-			if suf then load_editorconfig_for(b, b.state.config_dir .. "/global" .. suf) end
-			load_editorconfig_for(b, b.path)
-		end
+	table.insert(state.hooks.path_post, function(b)
+		load_editorconfig_for(b, b.state.config_dir .. "/global")
+		local suf = b.path:match("[^/.]+(%.[^/]+)$")
+		if suf then load_editorconfig_for(b, b.state.config_dir .. "/global" .. suf) end
+		load_editorconfig_for(b, b.path)
 	end)
 
 	table.insert(state.cmds.file, {"^h editorconfig$", function()

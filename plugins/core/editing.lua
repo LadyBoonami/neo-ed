@@ -26,21 +26,6 @@ return function(state)
 		end)
 	end, "delete lines (entire selection)"})
 
-	table.insert(state.cmds.range_global, {"^f$", function(m, a, b)
-		state.curr:select(a, b)
-		state.curr:print()
-	end, "select (\"focus\") lines"})
-
-	table.insert(state.cmds.line, {"^F(%d*)$", function(m, a)
-		local w = nil
-		if m[1] ~= "" then w = 2*tonumber(m[1]) end
-		if not w and os.execute("which tput >/dev/null 2>&1") then w = tonumber(lib.pipe("tput lines", "")) - 3 - #state.files end
-		if not w then w = 20 end
-		state.curr:select(math.max(1, a - (w // 2)), math.min(a + (w - w//2), state.curr:length()))
-		state.curr:seek(a)
-		state.curr:print()
-	end, "Mark line as current and focus lines around"})
-
 	table.insert(state.cmds.range_global, {"^([gv])(.)(.-)%2(.*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			buf:map(function(_, l)
@@ -118,15 +103,6 @@ return function(state)
 			buf:append(tmp, dst)
 		end)
 	end, "move lines"})
-
-	table.insert(state.cmds.line, {"^r +(.*)$", function(m, a)
-		state.curr:change(function(buf)
-			local h <close> = buf.state:path_hdl(m[1])
-			local tmp = {}
-			for l in h:lines() do table.insert(tmp, {text = l}) end
-			buf:append(tmp, a)
-		end)
-	end, "append text from file / command after"})
 
 	table.insert(state.cmds.range_line, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
 		state.curr:change(function(buf)

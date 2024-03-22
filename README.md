@@ -94,7 +94,10 @@ For a complete overview of commands, including those installed by plugins, use t
 ### File
 
 - `h`: show command help.
-- `e <path>`: open specified file.
+- `o <path>`: open specified file.
+- `e <path>`: load contents from file.
+- `E <path>`: load contents from file even if modified.
+- `f <path>`: set current file path.
 - `q`: close file.
 - `Q`: close file even if modified.
 - `qq`: quit editor.
@@ -161,7 +164,7 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 
 ### Global Range
 
-- `f`: select ("focus") the specified lines.
+- `S`: select the specified lines.
 - `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
 - `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.

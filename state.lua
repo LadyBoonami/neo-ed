@@ -237,6 +237,7 @@ return function(files)
 		input_post = {}, -- ???
 		load_pre   = {}, -- triggered before reading a file
 		load_post  = {}, -- triggered after reading a file
+		path_post  = {}, -- triggered after setting or changing the path of a buffer, additionally receives the old name
 		print_pre  = {}, -- triggered before printing code
 		print_post = {}, -- triggered after printing code
 		save_pre   = {}, -- triggered before saving a buffer to a file

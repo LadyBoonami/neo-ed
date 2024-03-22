@@ -5,13 +5,6 @@ local mt = {
 	__index = {},
 }
 
--- Buffer element fields:
---  - text: line contents
---  - prev: previous element, if not after current buffer position
---  - next: next element, if not before current buffer position
---  - nprev: number of elements before this, if not after current buffer position
---  - nnext: number of elements after this, if not before current buffer position
-
 local function mkcache()
 	return {
 		content = {},
@@ -91,16 +84,18 @@ function mt.__index:change(f)
 		local ok, err = xpcall(f, lib.traceback, self)
 		self._changing = nil
 		if not ok then
-			self:undo(true)
+			self:undo(nil, true)
 			lib.error(err)
 		end
 		self:diff_show(self:diff())
 	end
+	self.modified = true
 end
 
 -- Close the buffer. Fail if modified since last save and `force` is not set.
 function mt.__index:close(force)
 	if self.modified and not force then lib.error("buffer modified") end
+
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
@@ -280,6 +275,9 @@ function mt.__index:diff_show(d, ctx)
 end
 
 function mt.__index:drop(first, last)
+	first = first or 1
+	last  = last  or self:length()
+
 	self:seek(last )
 	self:seek(first)
 	for _ = first, last do self:delete() end
@@ -292,7 +290,7 @@ function mt.__index:drop_cache()
 	end
 
 	go(self.data)
-	for _, v in ipairs(self.history) do go(v) end
+	for i, v in ipairs(self.history) do go(v.data) end
 end
 
 function mt.__index:extract(first, last, data)
@@ -392,6 +390,29 @@ end
 function mt.__index:length(data)
 	data = data or self.data
 	return data.curr.nprev + 1 + data.curr.nnext
+end
+
+function mt.__index:load(path, force)
+	if self.modified and not force then lib.error("buffer modified") end
+
+	if path then self:set_path(path) end
+
+	lib.hook(self.state.hooks.load_pre, self)
+
+	if self:length() > 0 then self:drop() end
+
+	local s = lib.match{s = self.path, choose = self.state.protocols,
+		def = function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
+		wrap = function(t, p) return t.read(p) end
+	}
+
+	for _, f in ipairs(self.state.filters.read) do s = f(s, self) end
+	for l in s:gmatch("[^\n]*") do self:insert({text = l}) end
+	if self.data.curr.text == "" then self:delete() end
+
+	self.modified = false
+
+	lib.hook(self.state.hooks.load_post, self)
 end
 
 function mt.__index:map(f, first, last)
@@ -599,8 +620,11 @@ function mt.__index:set_path(path)
 	local canonical = lib.realpath(path)
 	if bypath[canonical] then lib.error("already opened: " .. canonical) end
 
-	self.path     = path
-	self.modified = true
+	local old_path = self.path
+	self.path      = path
+	self.modified  = true
+
+	lib.hook(self.state.hooks.path_post, self, old_path)
 end
 
 function mt.__index:undo(n, quiet)
@@ -623,7 +647,6 @@ function mt.__index:undo_point()
 
 	lib.hook(self.state.hooks.undo_point, self, state)
 	table.insert(self.history, state)
-	self.modified = true
 end
 
 return function(state, path)
@@ -638,25 +661,7 @@ return function(state, path)
 	ret.conf = {}
 	for k, v in pairs(state.conf_defs) do ret.conf[k] = v.def end
 
-	if path then
-		ret:set_path(path)
-		ret.modified = false
-	end
-
-	lib.hook(ret.state.hooks.load_pre, ret)
-
-	if path then
-		local s = lib.match{s = ret.path, choose = state.protocols,
-			def = function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
-			wrap = function(t, p) return t.read(p) end
-		}
-
-		for _, f in ipairs(ret.state.filters.read) do s = f(s, ret) end
-		for l in s:gmatch("[^\n]*") do ret:insert({text = l}) end
-		if ret.data.curr.text == "" then ret:delete() end
-	end
-
-	lib.hook(ret.state.hooks.load_post, ret)
+	if path then ret:load(path, true) end
 
 	return ret
 end
