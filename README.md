@@ -14,7 +14,8 @@ Dependencies:
 - Optional: `editorconfig` for Editorconfig support
 - Optional: `fzf` for a nice selection dialog provider
 
-Put this repository into your `LUA_PATH`, and symlink `main.lua` as `ned` into your `PATH`.
+Run `build.sh`.
+This will bundle everything into an executable script called `ned`, which you can put anywhere onto your `$PATH`.
 
 ## Command Types
 

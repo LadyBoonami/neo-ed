@@ -33,7 +33,6 @@ The following incompatibilities with POSIX remain to be fixed:
 - Escape control characters in print pipeline (simple)
 - Allow line marks with more complex labels than single characters (moderate)
 - Tutorial (moderate)
-- Installation process (moderate)
 - More configurability for base functionality (e.g. theming) (simple)
 
 ## API
