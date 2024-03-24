@@ -24,7 +24,6 @@ The following incompatibilities with POSIX remain to be fixed:
 - `r` command sets filename if appropriate (simple)
 - `s` command sets the current line to the last changed line (simple)
 - `w` command can write parts of the file (moderate)
-- Multi-line `c` command (history semantics?) (simple)
 
 ## Quality of life
 

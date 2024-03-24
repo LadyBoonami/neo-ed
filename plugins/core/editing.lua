@@ -12,11 +12,22 @@ return function(state)
 		end)
 	end, "append lines after"})
 
-	table.insert(state.cmds.line, {"^c$", function(m, a)
+	table.insert(state.cmds.range_line, {"^c$", function(m, a, b)
 		state.curr:change(function(buf)
-			buf:seek(a)
-			local pre = buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos()) or ""
-			buf:modify(function(n, l) l.text = buf:get_input({pre, l.text}) end)
+			local prev = buf:extract(a, b)
+			buf:drop(a, b)
+			buf:seek(a - 1)
+			while true do
+				local ac
+				if prev[1] then
+					ac = {prev[1].text:match("^(%s*)"), prev[1].text}
+					table.remove(prev, 1)
+				else
+					ac = {buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos()) or ""}
+				end
+				local s = buf:get_input(ac)
+				if s then buf:insert({text = s}) else break end
+			end
 		end)
 	end, "change line"})
 

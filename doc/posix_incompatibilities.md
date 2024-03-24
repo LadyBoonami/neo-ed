@@ -93,9 +93,6 @@ regular expression.
 
 ### Change Command
 
-`neo-ed`'s change command only operates on a single line, and cannot be used
-to delete that line.
-
 Using address 0 is not supported.
 
 ### Edit Command

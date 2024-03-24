@@ -122,8 +122,6 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `a`: start appending lines after the selected line.
   `Ctrl+D` to exit.
   The command history (press Up) contains the indentation prefix of the previous line.
-- `c`: replace the selected line.
-  The command history (press Up) contains the previous contents of the line, and the indentation prefix of the line.
 - `F<n>`: mark line as current line, and select the surrounding `<n>` lines.
   Without `<n>`, the selection is derived from the terminal size.
 - `i`: start insert lines before the selected line.
@@ -137,6 +135,8 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 
 ### Line Range
 
+- `c`: replace the selected lines.
+  The command history (press Up) contains the previous contents of the line, and the indentation prefix of the line.
 - `d`: delete the selected lines.
 - `J<sep><pattern><sep><flags>`: split the line(s) on each match of lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
