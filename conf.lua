@@ -32,17 +32,11 @@ function mt.__index:path_read()
 	lib.hook(self.state.hooks.read_pre, self, path)
 
 	local h <close> = io.open(path, "r")
-	local chunks = {}
-	while h do
-		local chunk = h:read("L")
-		if not chunk then break end
-		table.insert(chunks, chunk)
-	end
-	for _, f in ipairs(self.state.filters.read) do chunks = f(chunks, self) end
+	local ret = lib.filter(self.state.filters.read, h:read("a"), self)
 
 	lib.hook(self.state.hooks.read_post, self, path)
 
-	return table.concat(chunks)
+	return ret
 end
 
 function mt.__index:path_write(s)
@@ -50,11 +44,9 @@ function mt.__index:path_write(s)
 
 	lib.hook(self.state.hooks.write_pre, self, path)
 
-	local chunks = {}
-	for chunk in s:gmatch("[^\n]*\n") do table.insert(chunks, chunk) end
-	for i = #self.state.filters.write, 1, -1 do chunks = self.state.filters.write[i](chunks, self) end
+	s = lib.filter(self.state.filters.write, s, self)
 	local h <close> = io.open(path, "w")
-	for _, v in ipairs(chunks) do h:write(v) end
+	h:write(s)
 
 	lib.hook(self.state.hooks.write_post, self)
 end

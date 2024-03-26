@@ -15,28 +15,26 @@ return function(state)
 		on_set = function(_, v) lib.assert(encodings[v], "unknown charset: " .. v); return v end,
 	})
 
-	table.insert(state.filters.read, function(chunks, conf)
+	table.insert(state.filters.read, function(s, conf)
 		local enc = lib.assert(encodings[conf:get("charset")], "unknown charset: " .. conf:get("charset"))
-		for k, v in ipairs(chunks) do chunks[k] = lib.pipe("iconv -f " .. enc, v) end
-		return chunks
+		return lib.pipe("iconv -f " .. enc, s)
 	end)
 
-	table.insert(state.filters.write, function(chunks, conf)
+	table.insert(state.filters.write, function(s, conf)
 		local enc = lib.assert(encodings[conf:get("charset")], "unknown charset: " .. conf:get("charset"))
-		for k, v in ipairs(chunks) do chunks[k] = lib.pipe("iconv -t " .. enc, v) end
-		return chunks
+		return lib.pipe("iconv -t " .. enc, s)
 	end)
 
 
 	state:add_conf("end_nl", {type = "boolean", def = true, descr = "add terminating newline after last line"})
 
 	table.insert(state.filters.read, function(s, conf)
-		if conf:get("end_nl") then return s end
-		return s:gsub("\n$", "")
+		return s .. (conf:get("end_nl") and "" or "\n")
 	end)
 
 	table.insert(state.filters.write, function(s, conf)
-		return s .. (conf:get("end_nl") and "\n" or "")
+		if conf:get("end_nl") then return s end
+		return s:gsub("\n$", "")
 	end)
 
 
@@ -51,15 +49,12 @@ return function(state)
 
 	state:add_conf("crlf", {type = "boolean", def = false, descr = "CRLF line break mode"})
 
-	table.insert(state.filters.read, function(chunks)
-		for k, v in ipairs(chunks) do chunks[k] = v:gsub("\r", "") end
-		return chunks
+	table.insert(state.filters.read, function(s)
+		return s:gsub("\r", "")
 	end)
 
-	table.insert(state.filters.write, function(chunks, conf)
-		if not conf:get("crlf") then return chunks end
-		for k, v in ipairs(chunks) do chunks[k] = v:gsub("\n", "\r\n") end
-		return chunks
+	table.insert(state.filters.write, function(s, conf)
+		if not conf:get("crlf") then return s end
+		return s:gsub("\n", "\r\n")
 	end)
 end
-

@@ -3,7 +3,7 @@ local m = {}
 local posix = require "posix"
 
 m.profile_hooks = false
-m.stacktraces = false
+m.trace = false
 
 local rl = require "readline"
 rl.set_readline_name("ned")
@@ -30,7 +30,24 @@ function m.dup(t, n)
 end
 
 function m.error(msg)
-	error(msg, m.stacktraces and 2 or 0)
+	error(msg, m.trace and 2 or 0)
+end
+
+function m.filter(tbl, val, ...)
+	local prof = m.profiler("filter " .. tbl.name)
+
+	for _, f in ipairs(tbl) do
+		local info = debug.getinfo(f, "S")
+		local curr = ("%s:%s-%s"):format(info.short_src, info.linedefined, info.lastlinedefined)
+
+		prof:start(curr)
+		local ok, msg = xpcall(f, m.traceback, val, ...)
+		prof:stop()
+		if ok then val = msg else print(("%s failed: %s"):format(curr, msg)) end
+	end
+
+	if m.trace then prof:print() end
+	return val
 end
 
 function m.find_nth(s, pat, n)
@@ -46,25 +63,20 @@ function m.have_executable(name)
 	return os.execute("which " .. m.shellesc(name) .. " >/dev/null 2>&1")
 end
 
-function m.hook(h, ...)
-	if m.trace then
-		local info = debug.getinfo(2, "S")
-		print("Hook " .. info.short_src .. ":" .. info.linedefined .. "-" .. info.lastlinedefined)
-	end
+function m.hook(tbl, ...)
+	local prof = m.profiler("hook " .. tbl.name)
 
-	for _, f in ipairs(h) do
+	for _, f in ipairs(tbl) do
 		local info = debug.getinfo(f, "S")
+		local curr = ("%s:%s-%s"):format(info.short_src, info.linedefined, info.lastlinedefined)
 
-		local before = posix.sys.time.gettimeofday()
+		prof:start(curr)
 		local ok, msg = xpcall(f, m.traceback, ...)
-		local after = posix.sys.time.gettimeofday()
-		if not ok then print(("hook %s:%s-%s failed: %s"):format(info.short_src, info.linedefined, info.lastlinedefined, msg)) end
-
-		if m.profile_hooks then
-			local delta = (after.tv_sec + after.tv_usec / 1000000) - (before.tv_sec + before.tv_usec / 1000000)
-			print(("    %s:%s-%s %s"):format(info.short_src, info.linedefined, info.lastlinedefined, delta))
-		end
+		prof:stop()
+		if not ok then print(("%s failed: %s"):format(curr, msg)) end
 	end
+
+	if m.trace then prof:print() end
 end
 
 function m.id(...)
@@ -152,13 +164,14 @@ local profmt = {
 		print = function(self)
 			print("Sequence for " .. self.name .. ":")
 			for _, v in ipairs(self.steps) do
-				print(("%10.3fms %s"):format((v.stop - v.start) * 1000, v.name))
+				print(("%7.1f ms  %s"):format((v.stop - v.start) * 1000, v.name))
 			end
+			print(("%7.1f ms  %s"):format((os.clock() - self.created) * 1000, "total"))
 		end,
 	}
 }
 function m.profiler(name)
-	return setmetatable({name = name, steps = {}}, profmt)
+	return setmetatable({name = name, steps = {}, created = os.clock()}, profmt)
 end
 
 function m.print_doc(s)

@@ -80,5 +80,5 @@ return function(state)
 		buf.state.curr:print()
 	end, "switch to open file"})
 
-	table.insert(state.cmds.file, {"^:trace ([yn])", function(buf, m) lib.stacktraces = m[1] == "y" end, "enable stack traces for editor errors"})
+	table.insert(state.cmds.file, {"^:trace ([yn])", function(buf, m) lib.trace = m[1] == "y" end, "enable error traces and hook profiling"})
 end

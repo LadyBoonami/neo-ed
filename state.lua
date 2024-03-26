@@ -133,29 +133,29 @@ return function(files)
 	ret.files = {}
 
 	ret.filters = {
-		read  = {},
-		write = {},
+		read  = {name = "read" },
+		write = {name = "write"},
 	}
 
 	ret.hooks = {
 		-- buffer based
-		close      = {}, -- triggered before closing a buffer
-		input_post = {}, -- ???
-		load_pre   = {}, -- triggered before loading buffer contents
-		load_post  = {}, -- triggered after loading buffer contents
-		path_post  = {}, -- triggered after setting or changing the path of a buffer, additionally receives the old name
-		print_pre  = {}, -- triggered before printing code
-		print_post = {}, -- triggered after printing code
-		save_pre   = {}, -- triggered before saving a buffer to a file
-		save_post  = {}, -- triggered after saving a buffer to a file
-		undo_point = {}, -- triggered before inserting an undo point
+		close      = {name = "close"     }, -- triggered before closing a buffer
+		input_post = {name = "input_post"}, -- ???
+		load_pre   = {name = "load_pre"  }, -- triggered before loading buffer contents
+		load_post  = {name = "load_post" }, -- triggered after loading buffer contents
+		path_post  = {name = "path_post" }, -- triggered after setting or changing the path of a buffer, additionally receives the old name
+		print_pre  = {name = "print_pre" }, -- triggered before printing code
+		print_post = {name = "print_post"}, -- triggered after printing code
+		save_pre   = {name = "save_pre"  }, -- triggered before saving a buffer to a file
+		save_post  = {name = "save_post" }, -- triggered after saving a buffer to a file
+		undo_point = {name = "undo_point"}, -- triggered before inserting an undo point
 
 		-- conf based
-		conf_load  = {}, -- triggered when reading config for a path
-		read_pre   = {}, -- triggered before reading a file
-		read_post  = {}, -- triggered after reading a file
-		write_pre  = {}, -- triggered before writing a file
-		write_post = {}, -- triggered after writing a file
+		conf_load  = {name = "conf_load" }, -- triggered when reading config for a path
+		read_pre   = {name = "read_pre"  }, -- triggered before reading a file
+		read_post  = {name = "read_post" }, -- triggered after reading a file
+		write_pre  = {name = "write_pre" }, -- triggered before writing a file
+		write_post = {name = "write_post"}, -- triggered after writing a file
 	}
 
 	ret.print = {
@@ -223,6 +223,10 @@ return function(files)
 			end
 		end
 	end
+
+	local tmp = ret.filters.write
+	ret.filters.write = {name = "write"}
+	for i = #tmp, 1, -1 do table.insert(ret.filters.write, tmp[i]) end
 
 	if files and files[1] then
 		for _, v in ipairs(files) do
