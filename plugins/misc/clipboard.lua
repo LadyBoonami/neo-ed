@@ -16,21 +16,21 @@ return function(state)
 
 	end
 
-	table.insert(state.cmds.range_line, {"^C$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^C$", function(buf, m, a, b)
 		local h <close> = io.popen(copy_cmd, "w")
-		state.curr:inspect(function(_, l) h:write(l.text, "\n") end, a, b)
+		buf:inspect(function(_, l) h:write(l.text, "\n") end, a, b)
 	end, "copy lines"})
 
-	table.insert(state.cmds.range_line, {"^X$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^X$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local h <close> = io.popen(copy_cmd, "w")
 			buf:inspect(function(_, l) h:write(l.text, "\n") end, a, b)
 			buf:drop(a, b)
 		end)
 	end, "cut lines"})
 
-	table.insert(state.cmds.line, {"^V$", function(m, a)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.line, {"^V$", function(buf, m, a)
+		buf:change(function(buf)
 			local h <close> = io.popen(paste_cmd, "r")
 			local tmp = {}
 			for l in h:lines() do print(l); table.insert(tmp, {text = l}) end

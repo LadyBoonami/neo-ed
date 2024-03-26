@@ -3,24 +3,24 @@ local lib = require "neo-ed.lib"
 return function(state)
 	if not state:check_executable("git", "disabling git plugin") then return end
 
-	table.insert(state.cmds.range_local, {"^:git blame$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^:git blame$", function(buf, m, a, b)
 		local contents = {}
-		state.curr:inspect(function(_, l) table.insert(contents, l.text) end)
+		buf:inspect(function(_, l) table.insert(contents, l.text) end)
 		table.insert(contents, "")
 		local s = lib.pipe(
 			("git --no-pager blame -L %d,%d --contents - --line-porcelain -w -M -C -- %s"):format(
 				tostring(a),
 				tostring(b),
-				lib.shellesc(state.curr:get_path())
+				lib.shellesc(buf:get_path())
 			),
 			table.concat(contents, "\n")
 		)
 
 		local pos = 1
-		local lines = state.curr:all()
-		state.curr:print_lines(lines)
+		local lines = buf:all()
+		buf:print_lines(lines)
 
-		local lw = #tostring(state.curr:length())
+		local lw = #tostring(buf:length())
 		local aw = 0
 		local hw = tonumber(lib.pipe("git config core.abbrev || echo 7", ""))
 
@@ -48,7 +48,7 @@ return function(state)
 
 		aw = math.min(aw, 40)
 
-		lib.hook(state.hooks.print_pre, state.curr)
+		lib.hook(buf.state.hooks.print_pre, buf)
 
 		for i, row in ipairs(r) do
 			local dup = not not (r[i-1] and r[i-1].hash == row.hash)
@@ -69,18 +69,18 @@ return function(state)
 			))
 		end
 
-		lib.hook(state.hooks.print_post, state.curr)
+		lib.hook(buf.state.hooks.print_post, buf)
 	end, "run git blame"})
 
-	table.insert(state.cmds.file, {"^:git diff *([^ ]*)$", function(m)
+	table.insert(state.cmds.file, {"^:git diff *([^ ]*)$", function(buf, m)
 		local rev = m[1] == "" and "HEAD" or m[1]
 
-		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. state.curr:get_path()), "")
+		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. buf:get_path()), "")
 		local orig_lines = {}
 
 		for l in orig:gmatch("[^\n]*") do table.insert(orig_lines, {text = l:gsub("\r", "")}) end
 		if orig_lines[#orig_lines].text == "" then table.remove(orig_lines) end
 
-		state.curr:diff_show(state.curr:diff_lines(orig_lines, nil))
+		buf:diff_show(buf:diff_lines(orig_lines, nil))
 	end, "run git diff against a given refspec (default HEAD)"})
 end

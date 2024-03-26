@@ -2,9 +2,9 @@ local lib = require "neo-ed.lib"
 
 return function(state)
 	local function e(file, force)
-		return function(m)
-			state.curr:change(function(b) b:load(file and m[1] or nil, force) end)
-			state.curr.modified = false
+		return function(buf, m)
+			curr.curr:change(function(buf) buf:load(file and m[1] or nil, force) end)
+			curr.curr.modified = false
 		end
 	end
 
@@ -15,10 +15,10 @@ return function(state)
 
 
 	local function r(file)
-		return function(m, a)
+		return function(buf, m, a)
 			local clear_modified = false
-			state.curr:change(function(buf)
-				local conf = file and state:get_conf_for(m[1]) or buf.conf
+			buf:change(function(buf)
+				local conf = file and buf.state:get_conf_for(m[1]) or buf.conf
 				local tmp = {}
 				for l in conf:path_read():gmatch("[^\n]*") do table.insert(tmp, {text = l}) end
 				table.remove(tmp)
@@ -28,7 +28,7 @@ return function(state)
 					clear_modified = true
 				end
 			end)
-			if clear_modified then state.curr.modified = false end
+			if clear_modified then buf.modified = false end
 		end
 	end
 
@@ -37,10 +37,10 @@ return function(state)
 
 
 	local function w(file, close)
-		return function(m, a, b)
-			state.curr:save(file and m[1] or nil, a, b)
-			if close == 1 then state.curr:close() end
-			if close == 2 then state:quit()       end
+		return function(buf, m, a, b)
+			buf:save(file and m[1] or nil, a, b)
+			if close == 1 then buf:close()      end
+			if close == 2 then buf.state:quit() end
 		end
 	end
 
@@ -51,8 +51,8 @@ return function(state)
 
 
 	local function q(force, full)
-		return function()
-			if full then state:quit(force) else state.curr:close(force) end
+		return function(buf)
+			if full then buf.state:quit(force) else buf:close(force) end
 		end
 	end
 
@@ -62,23 +62,23 @@ return function(state)
 	table.insert(state.cmds.file, {"^QQ$", q(true , true ), "force quit"      })
 
 
-	table.insert(state.cmds.file, {"^f$"      , function(m) print(state.curr:get_path()) end, "print file name"        })
-	table.insert(state.cmds.file, {"^f +(.*)$", function(m) state.curr:set_path(m[1])    end, "set file name"          })
-	table.insert(state.cmds.file, {"^o +(.+)$", function(m) state:load(m[1]):print()     end, "open file in new buffer"})
-	table.insert(state.cmds.file, {"^u$"      , function( ) state.curr:undo()            end, "undo"                   })
+	table.insert(state.cmds.file, {"^f$"      , function(buf, m) print(buf:get_path())        end, "print file name"        })
+	table.insert(state.cmds.file, {"^f +(.*)$", function(buf, m) buf:set_path(m[1])           end, "set file name"          })
+	table.insert(state.cmds.file, {"^o +(.+)$", function(buf, m) buf.state:load(m[1]):print() end, "open file in new buffer"})
+	table.insert(state.cmds.file, {"^u$"      , function(buf   ) buf:undo()                   end, "undo"                   })
 
-	table.insert(state.cmds.file, {"^U$", function()
+	table.insert(state.cmds.file, {"^U$", function(buf)
 		local choices = {}
-		for i, v in ipairs(state.curr.history) do choices[#state.curr.history - i + 1] = tostring(i) .. "\t" .. v.__cmd end
-		local c = state:pick(choices)
+		for i, v in ipairs(buf.history) do choices[#buf.history - i + 1] = tostring(i) .. "\t" .. v.__cmd end
+		local c = buf.state:pick(choices)
 		if not c then return end
-		state.curr:undo(tonumber(c:match("^(%d+)\t")))
+		buf:undo(tonumber(c:match("^(%d+)\t")))
 	end, "undo via command history"})
 
-	table.insert(state.cmds.file, {"^#(%d+)$" , function(m)
-		state.curr = lib.assert(state.files[tonumber(m[1])], "no such file")
-		state.curr:print()
+	table.insert(state.cmds.file, {"^#(%d+)$" , function(buf, m)
+		buf.state.curr = lib.assert(buf.state.files[tonumber(m[1])], "no such file")
+		buf.state.curr:print()
 	end, "switch to open file"})
 
-	table.insert(state.cmds.file, {"^:trace ([yn])", function(m) lib.stacktraces = m[1] == "y" end, "enable stack traces for editor errors"})
+	table.insert(state.cmds.file, {"^:trace ([yn])", function(buf, m) lib.stacktraces = m[1] == "y" end, "enable stack traces for editor errors"})
 end

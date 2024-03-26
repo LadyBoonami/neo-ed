@@ -25,107 +25,6 @@ function mt.__index:closed()
 	for i, v in ipairs(self.files) do v.id = i end
 end
 
-function mt.__index:cmd(s)
-	local sel_a = self.curr:sel_first()
-	local sel_b = self.curr:sel_last ()
-	local len   = self.curr:length   ()
-	local pos   = self.curr:pos      ()
-
-	local function file0(f, m)
-		f(m)
-	end
-
-	local function pos1(f, m, a)
-		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, " .. len .. "]") end
-		f(m, a)
-	end
-
-	local function pos2(f, m, a, b)
-		a = a or sel_a
-		b = b or sel_b
-		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
-		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
-		f(m, a, b)
-	end
-
-	local function local2(f, m, a, b)
-		a = a or sel_a
-		b = b or sel_b
-		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
-		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
-		f(m, a, b)
-	end
-
-	local function global2(f, m, a, b)
-		a = a or sel_a
-		b = b or sel_b
-		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
-		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
-		f(m, a, b)
-	end
-
-	local function cmd2(a, b, s)
-		s = s:match("^%s*(.*)$")
-
-		local b_, s_ = lib.match{s = s, choose = self.cmds.addr.cont, def = function() end, args = {b}}
-		if b_ then return cmd2(a, b_, s_) end
-
-		if not lib.match{s = s, choose = self.cmds.range_global, def = function() return true end, wrap = global2, args = {a, b}} then return end
-		if not lib.match{s = s, choose = self.cmds.range_local , def = function() return true end, wrap = local2 , args = {a, b}} then return end
-		if not lib.match{s = s, choose = self.cmds.range_line  , def = function() return true end, wrap = pos2   , args = {a, b}} then return end
-
-		lib.error("could not parse: " .. s)
-	end
-
-	local function cmd1(a, s)
-		s = s:match("^%s*(.*)$")
-
-		local a_, s_ = lib.match{s = s, choose = self.cmds.addr.cont, def = function() end, args = {a}}
-		if a_ then return cmd1(a_, s_) end
-
-		local s_ = s:match("^,(.*)$")
-		if s_ then
-			local b, s__ = lib.match{s = s_, choose = self.cmds.addr.prim, def = function() end}
-			if b then return cmd2(a, b, s__) end
-			return cmd2(a, nil, s_)
-		end
-
-		local s_ = s:match("^;(.*)$")
-		if s_ then return cmd2(a, a, s_) end
-
-		if not lib.match{s = s, choose = self.cmds.range_global, def = function() return true end, wrap = global2, args = {a, a}} then return end
-		if not lib.match{s = s, choose = self.cmds.range_local , def = function() return true end, wrap = local2 , args = {a, a}} then return end
-		if not lib.match{s = s, choose = self.cmds.range_line  , def = function() return true end, wrap = pos2   , args = {a, a}} then return end
-		if not lib.match{s = s, choose = self.cmds.line        , def = function() return true end, wrap = pos1   , args = {a   }} then return end
-
-		lib.error("could not parse: " .. s)
-	end
-
-	local function cmd0(s)
-		s = s:match("^%s*(.*)$")
-
-		local a, b, s_ = lib.match{s = s, choose = self.cmds.addr.range, def = function() end}
-		if a then return cmd2(a, b, s_) end
-
-		local a, s_ = lib.match{s = s, choose = self.cmds.addr.prim, def = function() end}
-		if a then return cmd1(a, s_) end
-
-		if s:find("^,(.*)$") then return cmd1(nil, s) end
-
-		if not lib.match{s = s, choose = self.cmds.file        , def = function() return true end, wrap = file0                         } then return end
-		if not lib.match{s = s, choose = self.cmds.range_global, def = function() return true end, wrap = global2, args = {1    , len  }} then return end
-		if not lib.match{s = s, choose = self.cmds.range_local , def = function() return true end, wrap = local2 , args = {sel_a, sel_b}} then return end
-		if not lib.match{s = s, choose = self.cmds.range_line  , def = function() return true end, wrap = pos2   , args = {pos  , pos  }} then return end
-		if not lib.match{s = s, choose = self.cmds.line        , def = function() return true end, wrap = pos1   , args = {pos         }} then return end
-
-		lib.error("could not parse: " .. s)
-	end
-
-	self.curr_cmd = s
-	cmd0(s)
-	self.curr_cmd = nil
-end
-
 function mt.__index:err(s)
 	table.insert(self.errors, s)
 end
@@ -180,7 +79,7 @@ function mt.__index:main()
 			if not ok then self:err(status) end
 		else
 			if cmd ~= "" then table.insert(self.history, cmd) end
-			local ok, status = xpcall(self.cmd, lib.traceback, self, cmd)
+			local ok, status = xpcall(self.curr.cmd, lib.traceback, self.curr, cmd)
 			if not ok then self:err(status) end
 		end
 	end
@@ -328,7 +227,7 @@ return function(files)
 	if files and files[1] then
 		for _, v in ipairs(files) do
 			    if type(v) == "string" then ret:load(v     )
-			elseif type(v) == "table"  then ret:load(v.path); ret:cmd(v.cmd)
+			elseif type(v) == "table"  then ret:load(v.path):cmd(v.cmd)
 			end
 		end
 	else

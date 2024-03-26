@@ -1,9 +1,9 @@
 local lib = require "neo-ed.lib"
 
 return function(state)
-	table.insert(state.cmds.range_local, {"^:align *(%p)(.-)%1(%d*)$", function(m, a, b)
+	table.insert(state.cmds.range_local, {"^:align *(%p)(.-)%1(%d*)$", function(buf, m, a, b)
 		local n = tonumber(m[3]) or 1
-		state.curr:change(function(buf)
+		buf:change(function(buf)
 			buf:seek(b)
 			local max = 0
 			buf:inspect(function(_, l)

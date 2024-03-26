@@ -1,34 +1,34 @@
 local lib = require "neo-ed.lib"
 
 return function(state)
-	table.insert(state.cmds.file, {"^h$", function()
+	table.insert(state.cmds.file, {"^h$", function(buf)
 		local function f(t, addr)
 			for i, v in ipairs(t) do print(("    %s%-30s %s\x1b[0m"):format(i % 2 == 0 and "\x1b[34m" or "\x1b[36m", v[1]:gsub("^%^", ""):gsub(addr and "%(%.%*%)%$$" or "%$$", ""), v[3])) end
 		end
 
 		print("Line addressing:")
-		f(state.cmds.addr.prim, true)
+		f(buf.state.cmds.addr.prim, true)
 
 		print("Address modifiers:")
-		f(state.cmds.addr.cont, true)
+		f(buf.state.cmds.addr.cont, true)
 
 		print("Address range shorthands:")
-		f(state.cmds.addr.range, true)
+		f(buf.state.cmds.addr.range, true)
 
 		print("Single line commands (prefixed by a single address, defaults to current line)")
-		f(state.cmds.line)
+		f(buf.state.cmds.line)
 
 		print("Single line range commands (prefixed by two addresses, defaults to current line only)")
-		f(state.cmds.range_line)
+		f(buf.state.cmds.range_line)
 
 		print("Local range commands (prefixed by up to two addresses, default to the current selection)")
-		f(state.cmds.range_local)
+		f(buf.state.cmds.range_local)
 
 		print("Global range commands (prefixed by up to two addresses, defaults to the entire file)")
-		f(state.cmds.range_global)
+		f(buf.state.cmds.range_global)
 
 		print("File level commands")
-		f(state.cmds.file)
+		f(buf.state.cmds.file)
 	end, "show help"})
 
 	table.insert(state.cmds.file, {"^h patterns$", function()

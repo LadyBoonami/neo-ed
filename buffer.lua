@@ -13,14 +13,17 @@ local function mkcache()
 end
 
 function mt.__index:addr(s)
+	local function wrap_prim(f, m) return f(self, m) end
+	local function wrap_cont(f, m, a) return f(self, m, a) end
+
 	local function cont(a, s)
-		local a_, s_ = lib.match{s = s, choose = self.state.cmds.addr.cont, def = function() end, args = {a}}
+		local a_, s_ = lib.match{s = s, choose = self.state.cmds.addr.cont, def = function() end, wrap = wrap_cont, args = {a}}
 		if a_ then return cont(a_, s_) end
 		if s == "" then return a end
 		lib.error("could not parse: " .. s)
 	end
 
-	local a, s_ = lib.match{s = s, choose = self.state.cmds.addr.prim, def = function() end}
+	local a, s_ = lib.match{s = s, choose = self.state.cmds.addr.prim, wrap = wrap_prim, def = function() end}
 	if a then
 		return cont(a, s_)
 	end
@@ -61,6 +64,112 @@ function mt.__index:close(force)
 	lib.hook(self.state.hooks.close, self)
 	table.remove(self.state.files, self.id)
 	self.state:closed()
+end
+
+function mt.__index:cmd(s)
+	local sel_a = self:sel_first()
+	local sel_b = self:sel_last ()
+	local len   = self:length   ()
+	local pos   = self:pos      ()
+	local cmds  = self.state.cmds
+
+	local function file0(f, m)
+		f(self, m)
+	end
+
+	local function pos1(f, m, a)
+		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, " .. len .. "]") end
+		f(self, m, a)
+	end
+
+	local function pos2(f, m, a, b)
+		a = a or sel_a
+		b = b or sel_b
+		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
+		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
+		f(self, m, a, b)
+	end
+
+	local function local2(f, m, a, b)
+		a = a or sel_a
+		b = b or sel_b
+		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
+		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
+		f(self, m, a, b)
+	end
+
+	local function global2(f, m, a, b)
+		a = a or sel_a
+		b = b or sel_b
+		if not (0 <= a and a <= len) then lib.error(a .. " not in range [0, "           .. len .. "]") end
+		if not (a <= b and b <= len) then lib.error(b .. " not in range [" .. a .. ", " .. len .. "]") end
+		f(self, m, a, b)
+	end
+
+	local function prim(f, m) return f(self, m) end
+	local function cont(f, m, a) return f(self, m, a) end
+	local range = prim
+
+	local function cmd2(a, b, s)
+		s = s:match("^%s*(.*)$")
+
+		local b_, s_ = lib.match{s = s, choose = cmds.addr.cont, def = function() end, wrap = cont, args = {b}}
+		if b_ then return cmd2(a, b_, s_) end
+
+		if not lib.match{s = s, choose = cmds.range_global, def = function() return true end, wrap = global2, args = {a, b}} then return end
+		if not lib.match{s = s, choose = cmds.range_local , def = function() return true end, wrap = local2 , args = {a, b}} then return end
+		if not lib.match{s = s, choose = cmds.range_line  , def = function() return true end, wrap = pos2   , args = {a, b}} then return end
+
+		lib.error("could not parse: " .. s)
+	end
+
+	local function cmd1(a, s)
+		s = s:match("^%s*(.*)$")
+
+		local a_, s_ = lib.match{s = s, choose = cmds.addr.cont, def = function() end, wrap = cont, args = {a}}
+		if a_ then return cmd1(a_, s_) end
+
+		local s_ = s:match("^,(.*)$")
+		if s_ then
+			local b, s__ = lib.match{s = s_, choose = cmds.addr.prim, wrap = prim, def = function() end}
+			if b then return cmd2(a, b, s__) end
+			return cmd2(a, nil, s_)
+		end
+
+		local s_ = s:match("^;(.*)$")
+		if s_ then return cmd2(a, a, s_) end
+
+		if not lib.match{s = s, choose = cmds.range_global, def = function() return true end, wrap = global2, args = {a, a}} then return end
+		if not lib.match{s = s, choose = cmds.range_local , def = function() return true end, wrap = local2 , args = {a, a}} then return end
+		if not lib.match{s = s, choose = cmds.range_line  , def = function() return true end, wrap = pos2   , args = {a, a}} then return end
+		if not lib.match{s = s, choose = cmds.line        , def = function() return true end, wrap = pos1   , args = {a   }} then return end
+
+		lib.error("could not parse: " .. s)
+	end
+
+	local function cmd0(s)
+		s = s:match("^%s*(.*)$")
+
+		local a, b, s_ = lib.match{s = s, choose = cmds.addr.range, wrap = range, def = function() end}
+		if a then return cmd2(a, b, s_) end
+
+		local a, s_ = lib.match{s = s, choose = cmds.addr.prim, wrap = prim, def = function() end}
+		if a then return cmd1(a, s_) end
+
+		if s:find("^,(.*)$") then return cmd1(nil, s) end
+
+		if not lib.match{s = s, choose = cmds.file        , def = function() return true end, wrap = file0                         } then return end
+		if not lib.match{s = s, choose = cmds.range_global, def = function() return true end, wrap = global2, args = {1    , len  }} then return end
+		if not lib.match{s = s, choose = cmds.range_local , def = function() return true end, wrap = local2 , args = {sel_a, sel_b}} then return end
+		if not lib.match{s = s, choose = cmds.range_line  , def = function() return true end, wrap = pos2   , args = {pos  , pos  }} then return end
+		if not lib.match{s = s, choose = cmds.line        , def = function() return true end, wrap = pos1   , args = {pos         }} then return end
+
+		lib.error("could not parse: " .. s)
+	end
+
+	self.curr_cmd = s
+	cmd0(s)
+	self.curr_cmd = nil
 end
 
 -- Delete the current element, making the next (or alternatively previous) element the new buffer position.
@@ -598,7 +707,7 @@ function mt.__index:undo_point()
 	local state = {
 		data     = self.data,
 		modified = self.modified,
-		__cmd    = self.state.curr_cmd,
+		__cmd    = self.curr_cmd,
 	}
 
 	lib.hook(self.state.hooks.undo_point, self, state)

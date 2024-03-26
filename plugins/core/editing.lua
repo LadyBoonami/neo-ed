@@ -1,8 +1,8 @@
 local lib = require "neo-ed.lib"
 
 return function(state)
-	table.insert(state.cmds.line, {"^a$", function(m, a)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.line, {"^a$", function(buf, m, a)
+		buf:change(function(buf)
 			buf:seek(a)
 			while true do
 				local pre = buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos()) or ""
@@ -12,8 +12,8 @@ return function(state)
 		end)
 	end, "append lines after"})
 
-	table.insert(state.cmds.range_line, {"^c$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^c$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local prev = buf:extract(a, b)
 			buf:drop(a, b)
 			buf:seek(a - 1)
@@ -31,14 +31,14 @@ return function(state)
 		end)
 	end, "change line"})
 
-	table.insert(state.cmds.range_line, {"^d$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^d$", function(buf, m, a, b)
+		buf:change(function(buf)
 			buf:drop(a, b)
 		end)
 	end, "delete lines (entire selection)"})
 
-	table.insert(state.cmds.range_global, {"^([gv])(.)(.-)%2(.*)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_global, {"^([gv])(.)(.-)%2(.*)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			buf:map(function(_, l)
 				if m[1] == "g" and     l.text:find(m[3])
 				or m[1] == "v" and not l.text:find(m[3]) then
@@ -51,13 +51,13 @@ return function(state)
 				if not pos then break end
 				buf:seek(pos)
 				buf:modify(function(n, l) l.g_mark = nil end)
-				state:cmd(m[4])
+				buf:cmd(m[4])
 			end
 		end)
 	end, "perform command on every (non-)matching line"})
 
-	table.insert(state.cmds.line, {"^i$", function(m, a)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.line, {"^i$", function(buf, m, a)
+		buf:change(function(buf)
 			local first = true
 			buf:seek(a)
 			while true do
@@ -74,8 +74,8 @@ return function(state)
 		end)
 	end, "insert lines before"})
 
-	table.insert(state.cmds.range_local, {"^j(.*)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_local, {"^j(.*)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local tmp = {}
 			buf:inspect(function(_, l)
 				local strip = #tmp > 0 and m[1] ~= ""
@@ -87,8 +87,8 @@ return function(state)
 		end)
 	end, "join lines"})
 
-	table.insert(state.cmds.range_line, {"^J(.)(.*)%1(s?)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^J(.)(.*)%1(s?)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local new = {}
 			buf:inspect(function(_, l)
 				local prefix = ""
@@ -102,8 +102,8 @@ return function(state)
 		end)
 	end, "split lines on pattern"})
 
-	table.insert(state.cmds.range_line, {"^m(.*)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^m(.*)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local dst = buf:addr(m[1])
 			if dst > b then dst = dst - (b - a + 1)
 			elseif dst > a then lib.error("destination inside source range")
@@ -115,8 +115,8 @@ return function(state)
 		end)
 	end, "move lines"})
 
-	table.insert(state.cmds.range_line, {"^s(.)(.-)%1(.-)%1(.-)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^s(.)(.-)%1(.-)%1(.-)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local ctr = 0
 			buf:seek(b)
 			buf:map(function(_, l)
@@ -141,28 +141,28 @@ return function(state)
 		end)
 	end, "substitute text using Lua gsub"})
 
-	table.insert(state.cmds.range_line, {"^t(.*)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^t(.*)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local dst = buf:addr(m[1])
 			buf:append(buf:extract(a, b), dst)
 		end)
 	end, "copy (transfer) lines"})
 
-	table.insert(state.cmds.range_line, {"^>(%d*)$", function(m, a, b)
+	table.insert(state.cmds.range_line, {"^>(%d*)$", function(buf, m, a, b)
 		local indent = "\t"
-		if state.curr.conf:get("tab2spc") then indent = (" "):rep(state.curr.conf:get("indent")) end
-		state:cmd(a .. "," .. b .. "s/^/" .. indent:rep(tonumber(m[1]) or 1) .. "/")
+		if buf.conf:get("tab2spc") then indent = (" "):rep(buf.conf:get("indent")) end
+		buf:cmd(a .. "," .. b .. "s/^/" .. indent:rep(tonumber(m[1]) or 1) .. "/")
 	end, "indent lines (by amount of steps)"})
 
-	table.insert(state.cmds.range_line, {"^<(%d*)$", function(m, a, b)
-		state.curr:change(function(buf)
+	table.insert(state.cmds.range_line, {"^<(%d*)$", function(buf, m, a, b)
+		buf:change(function(buf)
 			local indent = "\t"
-			if state.curr.conf:get("tab2spc") then indent = (" "):rep(state.curr.conf:get("indent")) end
-			for i = 1, tonumber(m[1]) or 1 do state:cmd(a .. "," .. b .. "s/^" .. indent .. "//") end
+			if buf.conf:get("tab2spc") then indent = (" "):rep(buf.conf:get("indent")) end
+			for i = 1, tonumber(m[1]) or 1 do buf:cmd(a .. "," .. b .. "s/^" .. indent .. "//") end
 		end)
 	end, "indent lines (by amount of steps)"})
 
-	table.insert(state.cmds.line, {"^=$", function(m, a)
+	table.insert(state.cmds.line, {"^=$", function(buf, m, a)
 		print(a)
 	end, "print line number of addressed line"})
 

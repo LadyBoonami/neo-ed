@@ -50,5 +50,5 @@ return function(state)
 		if buf.conf:get("pygments_mode") == "" and buf:length() > 0 then guess(buf) end
 	end)
 
-	table.insert(state.cmds.file, {"^:pyg guess$", function() guess(state.curr) end, "guess file type from content"})
+	table.insert(state.cmds.file, {"^:pyg guess$", function(buf) guess(buf) end, "guess file type from content"})
 end

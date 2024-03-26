@@ -40,7 +40,7 @@ return function(state)
 
 		for k, v in pairs(from_editorconfig(data)) do
 			local ok, msg = xpcall(conf.set, lib.traceback, conf, k, v, "editorconfig")
-			if not ok then state:warn("ignoring editorconfig key " .. k .. ": " .. msg) end
+			if not ok then conf.state:warn("ignoring editorconfig key " .. k .. ": " .. msg) end
 		end
 	end
 
@@ -74,7 +74,7 @@ return function(state)
 		]]
 	end, "show editorconfig help"})
 
-	table.insert(state.cmds.file, {"^:econf global", function()
-		state:load(state.config_dir .. "/.editorconfig"):print()
+	table.insert(state.cmds.file, {"^:econf global", function(buf)
+		buf.state:load(buf.state.config_dir .. "/.editorconfig"):print()
 	end, "open global editorconfig file"})
 end
