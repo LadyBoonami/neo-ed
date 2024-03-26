@@ -46,16 +46,11 @@ return function(state)
 		type = "boolean",
 		def = false,
 		descr = "Enable elastic tabstops",
-		on_set = function(b, v)
-			b.data.printed = nil
-			for _, h in ipairs(b.history) do h.printed = nil end
-			return v
-		end,
 		drop_cache = true,
 	})
 
 	table.insert(state.print.pre, function(lines, b)
-		if b.conf.elastic_tabstops then
+		if b.conf:get("elastic_tabstops") then
 			local tbl    = {}
 			local widths = {}
 
@@ -79,7 +74,7 @@ return function(state)
 
 			for _, l in ipairs(tbl) do
 				for i = 1, #l - 1 do
-					l[i].width[1] = math.max(l[i].width[1], utf8.len(l[i].text) + b.conf.tabs)
+					l[i].width[1] = math.max(l[i].width[1], utf8.len(l[i].text) + b.conf:get("tabs"))
 				end
 			end
 
@@ -94,27 +89,30 @@ return function(state)
 	end)
 
 	table.insert(state.print.post, function(lines, b)
-		if not b.conf.elastic_tabstops then
+		if not b.conf:get("elastic_tabstops") then
 			local last = 0
 			local had = false
+
+			local conf_indent = b.conf:get("indent")
+			local conf_tabs   = b.conf:get("tabs")
 
 			local function spcs(wsp, t, i)
 				had = true
 				t = t or {}
 				i = i or 0
-				if #wsp < b.conf.indent then
+				if #wsp < conf_indent then
 					table.insert(t, wsp)
 					last = -i
 					return table.concat(t)
 				end
-				local num = #wsp < 2*b.conf.indent
+				local num = #wsp < 2*conf_indent
 				if num and i+1 <= -last then num = false end
-				table.insert(t, indentlvl(b.conf.indent, i + 1, "", num, "┆"))
-				return spcs(wsp:sub(b.conf.indent + 1), t, i + 1)
+				table.insert(t, indentlvl(conf_indent, i + 1, "", num, "┆"))
+				return spcs(wsp:sub(conf_indent + 1), t, i + 1)
 			end
 
-			local tab = (" "):rep(b.conf.tabs - 2)
-			local tab_ = (b.conf.tabs > 1 and "·" or "") .. (" "):rep(b.conf.tabs - 2) .. "│"
+			local tab = (" "):rep(conf_tabs - 2)
+			local tab_ = (conf_tabs > 1 and "·" or "") .. (" "):rep(conf_tabs - 2) .. "│"
 			local function tabs(wsp, t, i)
 				had = true
 				t = t or {}
@@ -130,7 +128,7 @@ return function(state)
 				end
 				local num = #wsp < 2 or wsp:find("^\t ")
 				if num and i+1 <= last then num = false end
-				table.insert(t, indentlvl(b.conf.tabs, i + 1, "", num, "│"))
+				table.insert(t, indentlvl(conf_tabs, i + 1, "", num, "│"))
 				return tabs(wsp:sub(2), t, i + 1)
 			end
 

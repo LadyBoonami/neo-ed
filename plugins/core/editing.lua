@@ -150,14 +150,14 @@ return function(state)
 
 	table.insert(state.cmds.range_line, {"^>(%d*)$", function(m, a, b)
 		local indent = "\t"
-		if state.curr.conf.tab2spc then indent = (" "):rep(state.curr.conf.indent) end
+		if state.curr.conf:get("tab2spc") then indent = (" "):rep(state.curr.conf:get("indent")) end
 		state:cmd(a .. "," .. b .. "s/^/" .. indent:rep(tonumber(m[1]) or 1) .. "/")
 	end, "indent lines (by amount of steps)"})
 
 	table.insert(state.cmds.range_line, {"^<(%d*)$", function(m, a, b)
 		state.curr:change(function(buf)
 			local indent = "\t"
-			if state.curr.conf.tab2spc then indent = (" "):rep(state.curr.conf.indent) end
+			if state.curr.conf:get("tab2spc") then indent = (" "):rep(state.curr.conf:get("indent")) end
 			for i = 1, tonumber(m[1]) or 1 do state:cmd(a .. "," .. b .. "s/^" .. indent .. "//") end
 		end)
 	end, "indent lines (by amount of steps)"})
@@ -167,8 +167,8 @@ return function(state)
 	end, "print line number of addressed line"})
 
 	table.insert(state.hooks.input_post, function(l, buf)
-		if not buf.conf.tab2spc then return l end
-		local spc = (" "):rep(buf.conf.indent)
+		if not buf.conf:get("tab2spc") then return l end
+		local spc = (" "):rep(buf.conf:get("indent"))
 		return l:gsub("\t", spc)
 	end)
 end

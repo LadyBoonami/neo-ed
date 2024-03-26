@@ -130,6 +130,12 @@ function mt.__index:err(s)
 	table.insert(self.errors, s)
 end
 
+function mt.__index:get_conf_for(path)
+	path = path and self:path_resolve(path)
+	local ret = require "neo-ed.conf" (self, path)
+	return ret
+end
+
 function mt.__index:info(s)
 	table.insert(self.msgs, s)
 end
@@ -137,7 +143,7 @@ end
 function mt.__index:load(path)
 	local ret = require "neo-ed.buffer" (self, path)
 	table.insert(self.files, ret)
-	table.sort(self.files, function(a, b) return (a.path or "") < (b.path or "") end)
+	table.sort(self.files, function(a, b) return (a:get_path() or "") < (b:get_path() or "") end)
 	for i, f in ipairs(self.files) do f.id = i end
 	self.curr = ret
 	return ret
@@ -152,7 +158,7 @@ function mt.__index:main()
 				i == self.curr.id and "[" or " ",
 				i,
 				i == self.curr.id and "]" or " ",
-				f.path,
+				f:get_path(),
 				f:length(),
 				f.modified and ", \x1b[35mmodified\x1b[0m" or ""
 			))
@@ -178,12 +184,6 @@ function mt.__index:main()
 			if not ok then self:err(status) end
 		end
 	end
-end
-
-function mt.__index:path_hdl(s)
-	local s_ = s:match("^!(.*)$")
-	if s_ then return lib.assert(io.popen(s_, "r")) end
-	return lib.assert(io.open(self:path_resolve(s), "r"))
 end
 
 function mt.__index:path_resolve(s)
@@ -239,19 +239,25 @@ return function(files)
 	}
 
 	ret.hooks = {
+		-- buffer based
 		close      = {}, -- triggered before closing a buffer
 		input_post = {}, -- ???
-		load_pre   = {}, -- triggered before reading a file
-		load_post  = {}, -- triggered after reading a file
+		load_pre   = {}, -- triggered before loading buffer contents
+		load_post  = {}, -- triggered after loading buffer contents
 		path_post  = {}, -- triggered after setting or changing the path of a buffer, additionally receives the old name
 		print_pre  = {}, -- triggered before printing code
 		print_post = {}, -- triggered after printing code
 		save_pre   = {}, -- triggered before saving a buffer to a file
 		save_post  = {}, -- triggered after saving a buffer to a file
 		undo_point = {}, -- triggered before inserting an undo point
-	}
 
-	ret.protocols = {}
+		-- conf based
+		conf_load  = {}, -- triggered when reading config for a path
+		read_pre   = {}, -- triggered before reading a file
+		read_post  = {}, -- triggered after reading a file
+		write_pre  = {}, -- triggered before writing a file
+		write_post = {}, -- triggered after writing a file
+	}
 
 	ret.print = {
 		pre       = {},
@@ -267,7 +273,6 @@ return function(files)
 	ret.errors   = {}
 	ret.warnings = {}
 
-	ret:add_conf("end_nl" , {type = "boolean", def = true   , descr = "add terminating newline after last line"                      })
 	ret:add_conf("indent" , {type = "number" , def = 4      , descr = "indentation depth step (spaces)"           , drop_cache = true})
 	ret:add_conf("tab2spc", {type = "boolean", def = false  , descr = "indent using spaces, convert tabs on entry", drop_cache = true})
 	ret:add_conf("tabs"   , {type = "number" , def = 4      , descr = "tab width"                                 , drop_cache = true})

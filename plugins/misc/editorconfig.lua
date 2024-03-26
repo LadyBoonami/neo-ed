@@ -3,8 +3,8 @@ local lib = require "neo-ed.lib"
 return function(state)
 	if not state:check_executable("editorconfig", "disabling editorconfig integration") then return end
 
-	local function from_editorconfig(from, to)
-		to = to or {}
+	local function from_editorconfig(from)
+		local ret = {}
 
 		local t = {
 			charset                  = function(v) return "charset", v                                   end,
@@ -20,35 +20,35 @@ return function(state)
 			k_ = k:match("^ned_(.*)$")
 			if k_ then v_ = v end
 			if not k_ and t[k] then k_, v_ = t[k](v) end
-			if k_ then to[k_] = v_ end
+			if k_ then ret[k_] = v_ end
 		end
 
 		if from.indent_size then
-			to.indent = (from.indent_size:lower() == "tab" and (from.tab_width or to.tabs or "4")) or from.indent_size or "4"
+			ret.indent = (from.indent_size:lower() == "tab" and (from.tab_width or ret.tabs or "4")) or from.indent_size or "4"
 		end
 
-		return to
+		return ret
 	end
 
-	local function load_editorconfig_for(b, path)
+	local function load_editorconfig_for(conf, path)
 		local h <close> = io.popen("editorconfig " .. lib.shellesc(lib.realpath(path)))
-		local conf = {}
+		local data = {}
 		for l in h:lines() do
 			local k, v = l:match("^([^=]+)=(.*)$")
-			if k then conf[k] = v end
+			if k then data[k] = v end
 		end
 
-		for k, v in pairs(from_editorconfig(conf)) do
-			local ok, msg = xpcall(b.conf_set, lib.traceback, b, k, v)
+		for k, v in pairs(from_editorconfig(data)) do
+			local ok, msg = xpcall(conf.set, lib.traceback, conf, k, v)
 			if not ok then state:warn("ignoring editorconfig key " .. k .. ": " .. msg) end
 		end
 	end
 
-	table.insert(state.hooks.path_post, function(b)
-		load_editorconfig_for(b, b.state.config_dir .. "/global")
-		local suf = b.path:match("[^/.]+(%.[^/]+)$")
-		if suf then load_editorconfig_for(b, b.state.config_dir .. "/global" .. suf) end
-		load_editorconfig_for(b, b.path)
+	table.insert(state.hooks.conf_load, function(conf, path)
+		load_editorconfig_for(conf, conf.state.config_dir .. "/global")
+		local suf = path:match("[^/.]+(%.[^/]+)$")
+		if suf then load_editorconfig_for(conf, conf.state.config_dir .. "/global" .. suf) end
+		load_editorconfig_for(conf, path)
 	end)
 
 	table.insert(state.cmds.file, {"^h editorconfig$", function()

@@ -96,6 +96,8 @@ For a complete overview of commands, including those installed by plugins, use t
 
 - `h`: show command help.
 - `o <path>`: open specified file.
+- `e`: reload contents from file.
+- `E`: reload contents from file even if modified.
 - `e <path>`: load contents from file.
 - `E <path>`: load contents from file even if modified.
 - `f <path>`: set current file path.
@@ -105,10 +107,6 @@ For a complete overview of commands, including those installed by plugins, use t
 - `QQ`: quit editor even if files are modified.
 - `u`: undo.
 - `U`: undo via command history.
-- `w`: write changes.
-- `w <path>`: write changes th specified file.
-- `wq`: write changes, then close file.
-- `wqq`: write changes, then quit editor.
 - `#<n>`: switch to open file no. `<n>`.
 - `!<cmd>`: execute shell command `<cmd>`.
 - `:set`: list all settings for the current file.
@@ -169,3 +167,7 @@ Each file path can be a directory path prefixed by a `@` symbol to open a file p
 - `g<sep><pattern><sep><command>`: execute command `<command>` on each line that matches lua pattern `<pattern>`.
   `<sep>` may be any punctuation character (usually `/`).
 - `v<sep><pattern><sep><command>`: like `g`, but execute `<command>` on every line that does NOT match `<pattern>`.
+- `w`: write changes.
+- `w <path>`: write changes th specified file.
+- `wq`: write changes, then close file.
+- `wqq`: write changes, then quit editor.

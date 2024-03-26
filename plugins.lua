@@ -21,16 +21,13 @@ function m.def(state)
 	require "neo-ed.plugins.misc.align"        (state)
 	require "neo-ed.plugins.misc.autocmd"      (state)
 	require "neo-ed.plugins.misc.clipboard"    (state)
+	require "neo-ed.plugins.misc.editorconfig" (state)
 	require "neo-ed.plugins.misc.eol_filter"   (state)
 	require "neo-ed.plugins.misc.fzf_picker"   (state)
 	require "neo-ed.plugins.misc.git"          (state)
-	require "neo-ed.plugins.misc.shell"        (state)
-	require "neo-ed.plugins.misc.ssh_url"      (state)
-	require "neo-ed.plugins.misc.tabs_filter"  (state)
-
-	-- ensure correct load order, we don't want pygments to overwrite explicit editorconfig settings
 	require "neo-ed.plugins.misc.pygments"     (state)
-	require "neo-ed.plugins.misc.editorconfig" (state)
+	require "neo-ed.plugins.misc.shell"        (state)
+	require "neo-ed.plugins.misc.tabs_filter"  (state)
 end
 
 return m

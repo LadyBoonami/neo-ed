@@ -20,10 +20,8 @@ The following incompatibilities with POSIX remain to be fixed:
 
 ### Miscellaneous
 
-- `r` without arguments to read current file (simple)
-- `r` command sets filename if appropriate (simple)
 - `s` command sets the current line to the last changed line (simple)
-- `w` command can write parts of the file (moderate)
+- `.` terminates input mode? (simple)
 
 ## Quality of life
 
@@ -49,7 +47,6 @@ The following incompatibilities with POSIX remain to be fixed:
 ## Cleanup
 
 - `lib.profile_hooks`
-- "Current file name" functionality
 
 ## Someday / Maybe
 

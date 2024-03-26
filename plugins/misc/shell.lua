@@ -2,7 +2,7 @@ local lib = require "neo-ed.lib"
 
 return function(state)
 	local function cmdline(s)
-		return s:gsub("%f[%%]%%", state.curr.path or function() lib.error("cannot substitute path for unnamed file") end):gsub("%%%%", "%%")
+		return s:gsub("%f[%%]%%", state.curr:get_path() or function() lib.error("cannot substitute path for unnamed file") end):gsub("%%%%", "%%")
 	end
 
 	table.insert(state.cmds.file, {"^!(.+)$", function(m)

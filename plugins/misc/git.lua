@@ -11,7 +11,7 @@ return function(state)
 			("git --no-pager blame -L %d,%d --contents - --line-porcelain -w -M -C -- %s"):format(
 				tostring(a),
 				tostring(b),
-				lib.shellesc(state.curr.path)
+				lib.shellesc(state.curr:get_path())
 			),
 			table.concat(contents, "\n")
 		)
@@ -75,7 +75,7 @@ return function(state)
 	table.insert(state.cmds.file, {"^:git diff *([^ ]*)$", function(m)
 		local rev = m[1] == "" and "HEAD" or m[1]
 
-		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. state.curr.path), "")
+		local orig = lib.pipe("git --no-pager show " .. lib.shellesc(rev) .. ":" .. lib.shellesc("./" .. state.curr:get_path()), "")
 		local orig_lines = {}
 
 		for l in orig:gmatch("[^\n]*") do table.insert(orig_lines, {text = l:gsub("\r", "")}) end

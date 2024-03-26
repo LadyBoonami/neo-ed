@@ -18,7 +18,7 @@ return function(state)
 	local function add_autocmd(hook)
 		state:add_conf("autocmd_" .. hook, {type = "string", def = "", descr = "command to run in the " .. hook .. " hook"})
 		table.insert(state.hooks[hook], function(b)
-			local cmd = validate(b.conf["autocmd_" .. hook])
+			local cmd = validate(b.conf:get("autocmd_" .. hook))
 			if cmd then b.state:cmd(cmd) end
 		end)
 	end

@@ -38,44 +38,6 @@ function mt.__index:append(lines, pos)
 	for _, l in ipairs(lines) do self:insert(l) end
 end
 
-function mt.__index:conf_show(k)
-	local v = self.conf[k]
-	lib.assert(v ~= nil, "unknown config option: " .. k)
-
-	if type(v) == "boolean" then return v and "y" or "n" end
-	if type(v) == "number"  then return tostring(v)      end
-	if type(v) == "string"  then return v                end
-	lib.error("cannot show setting of type " .. type(v))
-end
-
-function mt.__index:conf_set(k, v)
-	assert(type(v) == "string")
-
-	local def = lib.assert(self.state.conf_defs[k], "unknown config option: " .. k)
-
-	local function parse_val(s)
-		if def.type == "boolean" then
-			if s == "y" then return true  end
-			if s == "Y" then return true  end
-			if s == "n" then return false end
-			if s == "N" then return false end
-			if s == "1" then return true  end
-			if s == "0" then return false end
-			lib.error("could not parse boolean: " .. s)
-
-		elseif def.type == "number" then
-			return lib.assert(tonumber(s), "could not parse number: " .. s)
-
-		elseif def.type == "string" then
-			return s
-
-		end
-	end
-
-	self.conf[k] = (def.on_set or function(_, v) return v end)(self, parse_val(v))
-	if def.drop_cache then self:drop_cache() end
-end
-
 -- Create an undo point, then apply function `f` that changes the buffer. If `f` fails, roll back the changes.
 function mt.__index:change(f)
 	if self._changing then f(self) else
@@ -318,6 +280,10 @@ function mt.__index:get_input(history)
 	return ret
 end
 
+function mt.__index:get_path()
+	return self.conf:get_path()
+end
+
 -- Insert the given element after the current buffer position, making it the new buffer position.
 function mt.__index:insert(elem)
 	lib.assert(elem.text)
@@ -401,12 +367,7 @@ function mt.__index:load(path, force)
 
 	if self:length() > 0 then self:drop() end
 
-	local s = lib.match{s = self.path, choose = self.state.protocols,
-		def = function(p) local h <close> = io.open(p, "r"); return h and h:read("a") or "" end,
-		wrap = function(t, p) return t.read(p) end
-	}
-
-	for _, f in ipairs(self.state.filters.read) do s = f(s, self) end
+	local s = self.conf:path_read()
 	for l in s:gmatch("[^\n]*") do self:insert({text = l}) end
 	if self.data.curr.text == "" then self:delete() end
 
@@ -511,27 +472,27 @@ function mt.__index:pos()
 	return self.data.curr.nprev + 1
 end
 
-function mt.__index:save(path)
-	if path then self:set_path(path) end
+function mt.__index:save(path, first, last)
+	if path and not self:get_path() then self:set_path(path) end
+	first = first or 1
+	last  = last  or self:length()
 
-	lib.hook(self.state.hooks.save_pre, self)
+	local default_write = not path and first == 1 and last == self:length()
+
+	if default_write then lib.hook(self.state.hooks.save_pre, self) end
 
 	local s = {}
-	self:inspect(function(n, l) table.insert(s, l.text) end)
-	if self.conf.end_nl then table.insert(s, "") end
+	self:inspect(function(n, l) table.insert(s, l.text) end, first, last)
+	table.insert(s, "")
 	s = table.concat(s, "\n")
-	for i = #self.state.filters.write, 1, -1 do s = self.state.filters.write[i](s, self) end
+	; (path and self.state:get_conf_for(path) or self.conf):path_write(s)
 
-	lib.match{s = self.path, choose = self.state.protocols,
-		def = function(p, s) local h <close> = io.open(p, "w"); h:write(s) end,
-		wrap = function(t, p, s) t.write(p, s) end,
-		args = {s}
-	}
+	if default_write then
+		self.modified = false
+		for _, v in ipairs(self.history) do v.modified = true end
+	end
 
-	self.modified = false
-	for _, v in ipairs(self.history) do v.modified = true end
-
-	lib.hook(self.state.hooks.save_post, self)
+	if default_write then lib.hook(self.state.hooks.save_post, self) end
 end
 
 function mt.__index:scan(f, first, last)
@@ -612,17 +573,12 @@ end
 function mt.__index:set_path(path)
 	path = self.state:path_resolve(path)
 
-	local bypath = {}
-	for _, v in ipairs(self.state.files) do
-		if v.path then bypath[lib.realpath(v.path)] = true end
-	end
-
-	local canonical = lib.realpath(path)
-	if bypath[canonical] then lib.error("already opened: " .. canonical) end
-
-	local old_path = self.path
-	self.path      = path
-	self.modified  = true
+	local old_path = self:get_path()
+	local conf = self.state:get_conf_for(path)
+	conf:set_buffer(self)
+	self.conf:set_base(conf)
+	self.modified = true
+	self:drop_cache()
 
 	lib.hook(self.state.hooks.path_post, self, old_path)
 end
@@ -658,8 +614,7 @@ return function(state, path)
 	ret.history  = {}
 	ret.modified = false
 
-	ret.conf = {}
-	for k, v in pairs(state.conf_defs) do ret.conf[k] = v.def end
+	ret.conf = require "neo-ed.conf" (state)
 
 	if path then ret:load(path, true) end
 

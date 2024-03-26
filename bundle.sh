@@ -14,6 +14,7 @@ function add_module() {
 head -n 1 "main.lua"
 
 add_module "lib.lua"
+add_module "conf.lua"
 add_module "buffer.lua"
 add_module "state.lua"
 

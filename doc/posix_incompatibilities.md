@@ -100,11 +100,6 @@ Using address 0 is not supported.
 Reading the stdout of a command using `e !command` is currently not
 supported.
 
-### Filename Command
-
-This command is currently not supported by `neo-ed`, the `f` command has a
-different meaning.
-
 ### Global Command
 
 `neo-ed` currently does not support executing multiple commands inside a
@@ -171,9 +166,6 @@ for changes.
 
 ### Read Command
 
-`neo-ed` currently does not support using the `r` command without any
-argument.
-
 The `r` command currently does not set the file name if no file name is
 set.
 
@@ -201,8 +193,12 @@ See Interactive Global Command.
 
 ### Write Command
 
-`neo-ed` currently only supports the write command without any addresses,
-i.e. writing the entire file.
+If the entire buffer has been written to a named file using the `w` command,
+and the remembered file name is not changed to that file by this command,
+`neo-ed` does not reset the "last w command that wrote the entire buffer"
+flag. This avoids a situation where the buffer contents differ from the
+contents of the remembered file on disk, but the modified flag is not set,
+which the authors believe is a situation that should never occur.
 
 Using `!` to write to the standard input of a process is currently not
 supported.

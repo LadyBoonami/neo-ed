@@ -6,7 +6,8 @@ return function(state)
 	state:add_conf("pygments_mode", {type = "string", def = "", descr = "pygments highlighting mode", drop_cache = true})
 
 	state.print.highlight = function(lines, curr)
-		if curr.conf.pygments_mode ~= "" then
+		local mode = curr.conf:get("pygments_mode")
+		if mode ~= "" then
 			local a = 1
 			local b = #lines
 			while lines[a] and lines[a].text == "" do a = a + 1 end
@@ -16,7 +17,7 @@ return function(state)
 
 				for i = a, b do table.insert(raw, lines[i].text) end
 
-				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(curr.conf.pygments_mode), table.concat(raw, "\n"))
+				raw = lib.pipe("pygmentize -P style=native -l " .. lib.shellesc(mode), table.concat(raw, "\n"))
 
 				local i = a
 				for l in raw:gmatch("[^\n]*") do
@@ -28,22 +29,25 @@ return function(state)
 		end
 	end
 
-	local function guess(curr)
+	local function guess(buf)
 		local tmp = {}
-		curr:map(function(_, l) table.insert(tmp, l.text) end)
+		buf:map(function(_, l) table.insert(tmp, l.text) end)
 		local mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
-		curr:conf_set("pygments_mode", mode)
-		curr.state:info(("pygments thinks this is a %s%s%s file"):format("\x1b[34m", mode, "\x1b[0m"))
+		buf.conf:set("pygments_mode", mode)
+		buf.state:info(("pygments thinks %s%s%s is a %s%s%s file"):format(
+			"\x1b[33m", buf:get_path(), "\x1b[0m",
+			"\x1b[34m", mode          , "\x1b[0m"
+		))
 	end
 
-	table.insert(state.hooks.path_post, function(curr)
-		local h <close> = io.popen("pygmentize -N " .. lib.shellesc(curr.path), "r")
+	table.insert(state.hooks.conf_load, 1, function(conf, path)
+		local h <close> = io.popen("pygmentize -N " .. lib.shellesc(path), "r")
 		local mode = h:read("l")
-		if mode ~= "text" then curr:conf_set("pygments_mode", mode) end
+		if mode ~= "text" then conf:set("pygments_mode", mode) end
 	end)
 
-	table.insert(state.hooks.load_post, function(curr)
-		if curr.conf.pygments_mode == "" and curr:length() > 0 then guess(curr) end
+	table.insert(state.hooks.load_post, function(buf)
+		if buf.conf:get("pygments_mode") == "" and buf:length() > 0 then guess(buf) end
 	end)
 
 	table.insert(state.cmds.file, {"^:pyg guess$", function() guess(state.curr) end, "guess file type from content"})
