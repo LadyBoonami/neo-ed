@@ -39,7 +39,7 @@ return function(state)
 		end
 
 		for k, v in pairs(from_editorconfig(data)) do
-			local ok, msg = xpcall(conf.set, lib.traceback, conf, k, v)
+			local ok, msg = xpcall(conf.set, lib.traceback, conf, k, v, "editorconfig")
 			if not ok then state:warn("ignoring editorconfig key " .. k .. ": " .. msg) end
 		end
 	end

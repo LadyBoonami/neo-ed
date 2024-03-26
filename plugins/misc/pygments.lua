@@ -33,7 +33,7 @@ return function(state)
 		local tmp = {}
 		buf:map(function(_, l) table.insert(tmp, l.text) end)
 		local mode = lib.pipe("pygmentize -C", table.concat(tmp, "\n")):match("^[^\n]*")
-		buf.conf:set("pygments_mode", mode)
+		buf.conf:set("pygments_mode", mode, "pygments guess (file contents)")
 		buf.state:info(("pygments thinks %s%s%s is a %s%s%s file"):format(
 			"\x1b[33m", buf:get_path(), "\x1b[0m",
 			"\x1b[34m", mode          , "\x1b[0m"
@@ -43,7 +43,7 @@ return function(state)
 	table.insert(state.hooks.conf_load, 1, function(conf, path)
 		local h <close> = io.popen("pygmentize -N " .. lib.shellesc(path), "r")
 		local mode = h:read("l")
-		if mode ~= "text" then conf:set("pygments_mode", mode) end
+		if mode ~= "text" then conf:set("pygments_mode", mode, "pygments guess (file extension)") end
 	end)
 
 	table.insert(state.hooks.load_post, function(buf)
