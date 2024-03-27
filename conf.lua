@@ -32,7 +32,7 @@ function mt.__index:path_read()
 	lib.hook(self.state.hooks.read_pre, self, path)
 
 	local h <close> = io.open(path, "r")
-	local ret = lib.filter(self.state.filters.read, h:read("a"), self)
+	local ret = h and lib.filter(self.state.filters.read, h:read("a"), self) or ""
 
 	lib.hook(self.state.hooks.read_post, self, path)
 
@@ -45,7 +45,7 @@ function mt.__index:path_write(s)
 	lib.hook(self.state.hooks.write_pre, self, path)
 
 	s = lib.filter(self.state.filters.write, s, self)
-	local h <close> = io.open(path, "w")
+	local h <close> = assert(io.open(path, "w"), "could not write file " .. path)
 	h:write(s)
 
 	lib.hook(self.state.hooks.write_post, self)
