@@ -7,7 +7,8 @@ return function(state)
 			while true do
 				local pre = buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos()) or ""
 				local s = buf:get_input({pre})
-				if s then buf:insert({text = s}) else break end
+				if not s or s == "." then break end
+				buf:insert({text = s})
 			end
 		end)
 	end, "append lines after"})
@@ -26,7 +27,8 @@ return function(state)
 					ac = {buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos()) or ""}
 				end
 				local s = buf:get_input(ac)
-				if s then buf:insert({text = s}) else break end
+				if not s or s == "." then break end
+				buf:insert({text = s})
 			end
 		end)
 	end, "change line"})
@@ -63,13 +65,10 @@ return function(state)
 			while true do
 				local pre = buf:scan_r(function(_, l) return l.text ~= "" and l.text:match("^(%s*)") or nil end, buf:pos() + 1) or ""
 				local s = buf:get_input({pre})
-				if s then
-					if first then buf:seek(a - 1) end
-					first = false
-					buf:insert({text = s})
-				else
-					break
-				end
+				if not s or s == "." then break end
+				if first then buf:seek(a - 1) end
+				first = false
+				buf:insert({text = s})
 			end
 		end)
 	end, "insert lines before"})

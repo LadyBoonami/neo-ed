@@ -35,12 +35,6 @@ case arises, this can be looked at again.
 fit. Any requirements to print a specific output, including but not limited
 to the infamous `?`, are ignored.
 
-## Input Mode
-
-Unlike POSIX `ed`, `neo-ed` does not exit input mode when encountering a line
-consisting of only a period (`.`). Input mode must be exited by signaling
-an end-of-file (using `Ctrl-D`), which is also valid in POSIX `ed`.
-
 ## Regular Expressions
 
 Instead of regular expressions, `neo-ed` uses Lua patterns, as specified by the
