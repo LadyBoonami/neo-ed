@@ -1,0 +1,16 @@
+a 1.a
+Section 1
+b 1.b
+
+a 2.a
+Section 2
+b 2.b
+
+a 3.a
+Section 3
+b 3.b
+
+---
+Section 2
+b 2.b
+a 2.a

@@ -21,7 +21,6 @@ The following incompatibilities with POSIX remain to be fixed:
 ### Miscellaneous
 
 - `s` command sets the current line to the last changed line (simple)
-- Lots of tests
 
 ## Quality of life
 
@@ -44,9 +43,40 @@ The following incompatibilities with POSIX remain to be fixed:
 
 - Language Server Protocol (hard)
 
-## Cleanup
+## Tests
 
-- `lib.profile_hooks`
+- posix/address/, and ;
+- posix/command/whitespace
+- posix/command/a and i
+- posix/command/c
+- posix/command/d
+- posix/command/e and E
+- posix/command/f
+- posix/command/g and v
+- posix/command/j
+- posix/command/k
+- posix/command/m and t
+- posix/command/r
+- posix/command/s
+- posix/command/u
+- posix/command/w
+- posix/command/!
+- neo/address/%
+- neo/address/selection
+- neo/address/omit
+- neo/command/F and S
+- neo/command/j
+- neo/command/J
+- neo/command/|
+- neo/command/clipboard
+- neo/command/indent
+- neo/command/:align
+- neo/command/multi-file
+- neo/io/charset
+- neo/io/crlf
+- neo/io/end_nl
+- neo/io/tab2spc
+- neo/io/trim
 
 ## Someday / Maybe
 
