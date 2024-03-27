@@ -185,6 +185,12 @@ function m.print_doc(s)
 end
 
 function m.readline(prompt, ac)
+	if not posix.unistd.isatty(0) then
+		local r = io.stdin:read("l")
+		print(prompt .. (r or ""))
+		return r
+	end
+
 	if ac then for _, v in ipairs(ac) do rl.add_history(v) end end
 	local r = rl.readline(prompt)
 	if r == "" then print("") end

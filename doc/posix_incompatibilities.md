@@ -11,14 +11,6 @@ compatibility" section in `TODO.md` for details.
 `neo-ed` does not support the options specified by POSIX. Prompt and output
 are handled differently in `neo-ed`, see below.
 
-## Stdin
-
-`neo-ed` does not support reading from an input that is not a terminal. For
-noninteractive text editing, other, better tools, such as `sed`, `awk`, and
-the original `ed` exist. This decision allows `neo-ed` to use the powerful
-`readline` library, which supports cursor movement, command history, and
-many more features.
-
 ## Environment Variables
 
 `neo-ed` currently does not have internationalization support, and therefore

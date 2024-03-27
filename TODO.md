@@ -21,6 +21,7 @@ The following incompatibilities with POSIX remain to be fixed:
 ### Miscellaneous
 
 - `s` command sets the current line to the last changed line (simple)
+- Lots of tests
 
 ## Quality of life
 
